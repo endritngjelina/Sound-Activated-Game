@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Quest - Advanced Audio-Controlled Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            background-attachment: fixed;
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            margin: 0;
+            user-select: none;
+            cursor: default;
+        }
+
+        /* Enhanced backdrop blur effects */
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-effect-strong {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 70%, #8FBC8F 100%);
+        }
+
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(0, 255, 136, 0.6);
+            min-width: 280px;
+            box-shadow: 0 10px 40px rgba(0, 255, 136, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(0);
+        }
+
+        .hud:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0, 255, 136, 0.3);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .hud h3 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 700;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            letter-spacing: 0.5px;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 15px;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .stat:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .stat-value {
+            color: #00ff88;
+            font-weight: 700;
+            text-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 107, 53, 0.6);
+            max-width: 350px;
+            box-shadow: 0 10px 40px rgba(255, 107, 53, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .controls:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(255, 107, 53, 0.3);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .controls h3 {
+            color: #ff6b35;
+            margin-bottom: 15px;
+            font-weight: 700;
+            text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+            letter-spacing: 0.5px;
+        }
+
+        .control-item {
+            margin: 8px 0;
+            font-size: 13px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid #ff6b35;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-item:hover {
+            background: rgba(255, 107, 53, 0.1);
+            transform: translateX(-5px);
+            border-left-color: #ffffff;
+        }
+
+        .control-item .emoji {
+            font-size: 16px;
+            filter: drop-shadow(0 0 3px rgba(255, 107, 53, 0.3));
+        }
+
+        .audio-visualizer {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 320px;
+            height: 100px;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            border: 2px solid rgba(155, 89, 182, 0.6);
+            padding: 15px;
+            box-shadow: 0 10px 40px rgba(155, 89, 182, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .audio-visualizer:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(155, 89, 182, 0.3);
+        }
+
+        .audio-visualizer::before {
+            content: '🎵 Audio Visualizer';
+            position: absolute;
+            top: -12px;
+            left: 15px;
+            background: rgba(155, 89, 182, 0.9);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .visualizer-bars {
+            display: flex;
+            align-items: end;
+            height: 70px;
+            gap: 3px;
+            padding: 5px 0;
+        }
+
+        .bar {
+            flex: 1;
+            background: linear-gradient(to top, 
+                #e74c3c 0%, 
+                #f39c12 30%, 
+                #2ecc71 60%, 
+                #3498db 80%, 
+                #9b59b6 100%);
+            min-height: 3px;
+            border-radius: 2px;
+            transition: height 0.08s ease-out;
+            box-shadow: 0 0 10px rgba(155, 89, 182, 0.3);
+            position: relative;
+        }
+
+        .bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 20%;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px 2px 0 0;
+        }
+
+        .menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 50px;
+            border-radius: 25px;
+            border: 3px solid transparent;
+            background-clip: padding-box;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            animation: menuFloat 6s ease-in-out infinite;
+        }
+
+        @keyframes menuFloat {
+            0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+            50% { transform: translate(-50%, -50%) translateY(-10px); }
+        }
+
+        .menu::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            background: linear-gradient(45deg, #00ff88, #ff6b35, #9b59b6, #00ff88);
+            border-radius: 25px;
+            z-index: -1;
+            animation: gradientRotate 4s linear infinite;
+        }
+
+        @keyframes gradientRotate {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .menu h1 {
+            color: transparent;
+            background: linear-gradient(45deg, #00ff88, #ff6b35, #9b59b6);
+            background-clip: text;
+            -webkit-background-clip: text;
+            margin-bottom: 25px;
+            font-size: 3em;
+            font-weight: 800;
+            text-shadow: none;
+            letter-spacing: 2px;
+            animation: titlePulse 3s ease-in-out infinite;
+        }
+
+        @keyframes titlePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .menu p {
+            margin: 18px 0;
+            font-size: 16px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 400;
+        }
+
+        .menu .feature-list {
+            text-align: left;
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .menu .feature-item {
+            margin: 8px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .menu .feature-item:last-child {
+            border-bottom: none;
+        }
+
+        .menu .feature-item:hover {
+            color: #00ff88;
+            transform: translateX(10px);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #00ff88 0%, #00d4aa 50%, #00c4bb 100%);
+            color: white;
+            border: none;
+            padding: 16px 35px;
+            margin: 15px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 700;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 6px 25px rgba(0, 255, 136, 0.4),
+                0 2px 8px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 
+                0 12px 40px rgba(0, 255, 136, 0.6),
+                0 6px 15px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(135deg, #00ff88 0%, #00e6cc 50%, #00d4ff 100%);
+        }
+
+        .btn:active {
+            transform: translateY(-1px) scale(1.02);
+            transition: all 0.1s ease;
+        }
+
+        .mic-status {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 12px 18px;
+            border-radius: 25px;
+            border: 2px solid #e74c3c;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mic-status .mic-icon {
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .mic-active {
+            border-color: #2ecc71;
+            background: rgba(46, 204, 113, 0.1);
+            animation: micPulse 2s infinite;
+            color: #2ecc71;
+        }
+
+        .mic-active .mic-icon {
+            animation: micBounce 1s infinite;
+        }
+
+        @keyframes micPulse {
+            0% { 
+                box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
+                background: rgba(46, 204, 113, 0.1);
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(46, 204, 113, 0.6);
+                background: rgba(46, 204, 113, 0.2);
+            }
+            100% { 
+                box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
+                background: rgba(46, 204, 113, 0.1);
+            }
+        }
+
+        @keyframes micBounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* Loading and transition effects */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.5s ease;
+        }
+
+        .loading-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive design improvements */
+        @media (max-width: 768px) {
+            .hud {
+                top: 10px;
+                left: 10px;
+                min-width: 220px;
+                padding: 15px;
+            }
+
+            .controls {
+                top: 10px;
+                right: 10px;
+                max-width: 280px;
+                padding: 15px;
+            }
+
+            .audio-visualizer {
+                bottom: 10px;
+                left: 10px;
+                width: 280px;
+                height: 80px;
+            }
+
+            .menu {
+                padding: 30px;
+                margin: 20px;
+                width: calc(100% - 40px);
+                box-sizing: border-box;
+            }
+
+            .menu h1 {
+                font-size: 2.2em;
+            }
+
+            .control-item {
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hud, .controls {
+                position: relative;
+                top: 0;
+                left: 0;
+                right: 0;
+                margin: 10px;
+                width: calc(100% - 20px);
+            }
+
+            .audio-visualizer {
+                position: relative;
+                bottom: 0;
+                left: 0;
+                margin: 10px;
+                width: calc(100% - 20px);
+            }
+
+            .menu h1 {
+                font-size: 1.8em;
+            }
+        }
+
+        /* Enhanced particle effects */
+        .particle-trail {
+            position: absolute;
+            pointer-events: none;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            opacity: 0.8;
+            animation: particleFade 1s ease-out forwards;
+        }
+
+        @keyframes particleFade {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+
+        .achievement {
+            position: absolute;
+            top: 120px;
+            right: 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.9) 0%, rgba(255, 193, 7, 0.9) 100%);
+            color: #1a1a1a;
+            padding: 20px 25px;
+            border-radius: 15px;
+            border: 2px solid #ffd700;
+            transform: translateX(450px);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 200;
+            font-weight: 700;
+            font-size: 15px;
+            box-shadow: 
+                0 15px 40px rgba(255, 215, 0, 0.4),
+                0 5px 15px rgba(0, 0, 0, 0.2);
+            max-width: 300px;
+            word-wrap: break-word;
+        }
+
+        .achievement.show {
+            transform: translateX(0);
+            animation: achievementPop 0.8s ease-out;
+        }
+
+        @keyframes achievementPop {
+            0% {
+                transform: translateX(450px) scale(0.8);
+                opacity: 0;
+            }
+            70% {
+                transform: translateX(-10px) scale(1.05);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        .achievement::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ffd700, #ffed4a, #ffd700);
+            border-radius: 17px;
+            z-index: -1;
+            animation: achievementGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes achievementGlow {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="hud">
+            <h3>🎮 Game Stats</h3>
+            <div class="stat">
+                <span>Score:</span>
+                <span id="score">0</span>
+            </div>
+            <div class="stat">
+                <span>Level:</span>
+                <span id="level">1</span>
+            </div>
+            <div class="stat">
+                <span>Lives:</span>
+                <span id="lives">❤️❤️❤️</span>
+            </div>
+            <div class="stat">
+                <span>Coins:</span>
+                <span id="coins">0</span>
+            </div>
+            <div class="stat">
+                <span>Sound Level:</span>
+                <span id="soundLevel">0</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <h3>🎵 Sound Controls</h3>
+            <div class="control-item">🗣️ <strong>Loud Voice/Yell:</strong> Jump</div>
+            <div class="control-item">👏 <strong>Clap:</strong> Sprint/Dash</div>
+            <div class="control-item">🎵 <strong>Whistle:</strong> Activate special ability</div>
+            <div class="control-item">📢 <strong>Sustained Sound:</strong> Fly/Hover</div>
+            <div class="control-item">🤫 <strong>Silence:</strong> Stealth mode</div>
+            <div class="control-item">⚡ <strong>Sharp Sounds:</strong> Attack enemies</div>
+        </div>
+
+        <div class="audio-visualizer">
+            <div class="visualizer-bars" id="visualizerBars"></div>
+        </div>
+
+        <div class="mic-status" id="micStatus">
+            🎤 Microphone: Disconnected
+        </div>
+
+        <div class="menu" id="startMenu">
+            <h1>🎵 SOUND QUEST</h1>
+            <p>An advanced sound-activated adventure game</p>
+            <p>Use your voice and sounds to control your character through challenging levels!</p>
+            <p><strong>Features:</strong></p>
+            <p>✨ Real-time audio analysis & frequency detection</p>
+            <p>🎮 Multiple sound-based controls & abilities</p>
+            <p>🏆 Achievement system & progressive difficulty</p>
+            <p>🎨 Dynamic particle effects & animations</p>
+            <button class="btn" onclick="startGame()">🚀 Start Adventure</button>
+        </div>
+
+        <div class="achievement" id="achievement">
+            🏆 Achievement Unlocked!
+        </div>
+    </div>
+
+    <script>
+        class SoundActivatedGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.resizeCanvas();
+                
+                // Game state
+                this.gameState = 'menu'; // menu, playing, paused, gameOver
+                this.score = 0;
+                this.level = 1;
+                this.lives = 3;
+                this.coins = 0;
+                
+                // Audio setup
+                this.audioContext = null;
+                this.microphone = null;
+                this.analyser = null;
+                this.dataArray = null;
+                this.isListening = false;
+                
+                // Sound detection
+                this.soundLevel = 0;
+                this.previousSoundLevel = 0;
+                this.soundHistory = [];
+                this.clapDetected = false;
+                this.whistleDetected = false;
+                this.shoutDetected = false;
+                
+                // Game objects
+                this.player = {
+                    x: 100,
+                    y: 400,
+                    width: 40,
+                    height: 60,
+                    velocityX: 0,
+                    velocityY: 0,
+                    grounded: false,
+                    sprinting: false,
+                    flying: false,
+                    stealth: false,
+                    invulnerable: false,
+                    color: '#ff6b35',
+                    animation: 0
+                };
+                
+                this.platforms = [];
+                this.enemies = [];
+                this.collectibles = [];
+                this.particles = [];
+                this.projectiles = [];
+                
+                // Game mechanics
+                this.gravity = 0.5;
+                this.jumpPower = -12;
+                this.moveSpeed = 5;
+                this.sprintMultiplier = 2;
+                
+                // Audio visualization
+                this.visualizerBars = [];
+                this.initializeVisualizer();
+                
+                // Achievements
+                this.achievements = [];
+                this.unlockedAchievements = new Set();
+                
+                this.setupEventListeners();
+                this.generateLevel();
+                this.gameLoop();
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            setupEventListeners() {
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                // Keyboard fallback controls
+                document.addEventListener('keydown', (e) => {
+                    if (this.gameState !== 'playing') return;
+                    
+                    switch(e.key) {
+                        case ' ':
+                            this.jump();
+                            break;
+                        case 'ArrowLeft':
+                            this.player.velocityX = -this.moveSpeed;
+                            break;
+                        case 'ArrowRight':
+                            this.player.velocityX = this.moveSpeed;
+                            break;
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    if (this.gameState !== 'playing') return;
+                    
+                    switch(e.key) {
+                        case 'ArrowLeft':
+                        case 'ArrowRight':
+                            this.player.velocityX = 0;
+                            break;
+                    }
+                });
+            }
+
+            async initializeAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false
+                        } 
+                    });
+                    
+                    this.microphone = this.audioContext.createMediaStreamSource(stream);
+                    this.analyser = this.audioContext.createAnalyser();
+                    
+                    // High-resolution audio analysis
+                    this.analyser.fftSize = 2048;
+                    this.analyser.smoothingTimeConstant = 0.3;
+                    
+                    const bufferLength = this.analyser.frequencyBinCount;
+                    this.dataArray = new Uint8Array(bufferLength);
+                    this.frequencyArray = new Uint8Array(bufferLength);
+                    
+                    this.microphone.connect(this.analyser);
+                    this.isListening = true;
+                    
+                    document.getElementById('micStatus').innerHTML = '🎤 Microphone: Active';
+                    document.getElementById('micStatus').classList.add('mic-active');
+                    
+                    return true;
+                } catch (error) {
+                    console.error('Audio initialization failed:', error);
+                    document.getElementById('micStatus').innerHTML = '🎤 Microphone: Failed';
+                    return false;
+                }
+            }
+
+            initializeVisualizer() {
+                const visualizerContainer = document.getElementById('visualizerBars');
+                for (let i = 0; i < 32; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    visualizerContainer.appendChild(bar);
+                    this.visualizerBars.push(bar);
+                }
+            }
+
+            analyzeAudio() {
+                if (!this.isListening || !this.analyser) return;
+                
+                this.analyser.getByteTimeDomainData(this.dataArray);
+                this.analyser.getByteFrequencyData(this.frequencyArray);
+                
+                // Calculate sound level (volume)
+                let sum = 0;
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const sample = (this.dataArray[i] - 128) / 128;
+                    sum += sample * sample;
+                }
+                this.previousSoundLevel = this.soundLevel;
+                this.soundLevel = Math.sqrt(sum / this.dataArray.length) * 100;
+                
+                // Update sound history for pattern detection
+                this.soundHistory.push(this.soundLevel);
+                if (this.soundHistory.length > 30) {
+                    this.soundHistory.shift();
+                }
+                
+                // Update UI
+                document.getElementById('soundLevel').textContent = Math.round(this.soundLevel);
+                
+                // Update visualizer
+                this.updateVisualizer();
+                
+                // Detect sound patterns
+                this.detectSoundPatterns();
+                
+                // Apply sound-based controls
+                this.applySoundControls();
+            }
+
+            updateVisualizer() {
+                if (!this.frequencyArray) return;
+                
+                const barCount = this.visualizerBars.length;
+                const dataPerBar = Math.floor(this.frequencyArray.length / barCount);
+                
+                for (let i = 0; i < barCount; i++) {
+                    let sum = 0;
+                    for (let j = 0; j < dataPerBar; j++) {
+                        sum += this.frequencyArray[i * dataPerBar + j];
+                    }
+                    const average = sum / dataPerBar;
+                    const height = (average / 255) * 60;
+                    this.visualizerBars[i].style.height = height + 'px';
+                }
+            }
+
+            detectSoundPatterns() {
+                if (this.soundHistory.length < 10) return;
+                
+                const recent = this.soundHistory.slice(-10);
+                const average = recent.reduce((a, b) => a + b) / recent.length;
+                const currentLevel = this.soundLevel;
+                
+                // Clap detection (sharp spike in volume)
+                const volumeSpike = currentLevel - this.previousSoundLevel;
+                if (volumeSpike > 15 && currentLevel > 20) {
+                    this.clapDetected = true;
+                    setTimeout(() => this.clapDetected = false, 200);
+                }
+                
+                // Shout detection (sustained high volume)
+                if (currentLevel > 30) {
+                    this.shoutDetected = true;
+                    setTimeout(() => this.shoutDetected = false, 100);
+                }
+                
+                // Whistle detection (frequency analysis)
+                if (this.frequencyArray) {
+                    // Check for high frequency concentration (whistle-like)
+                    const highFreqStart = Math.floor(this.frequencyArray.length * 0.6);
+                    const highFreqEnd = Math.floor(this.frequencyArray.length * 0.9);
+                    let highFreqSum = 0;
+                    let totalSum = 0;
+                    
+                    for (let i = 0; i < this.frequencyArray.length; i++) {
+                        totalSum += this.frequencyArray[i];
+                        if (i >= highFreqStart && i < highFreqEnd) {
+                            highFreqSum += this.frequencyArray[i];
+                        }
+                    }
+                    
+                    const highFreqRatio = highFreqSum / totalSum;
+                    if (highFreqRatio > 0.3 && currentLevel > 10) {
+                        this.whistleDetected = true;
+                        setTimeout(() => this.whistleDetected = false, 500);
+                    }
+                }
+            }
+
+            applySoundControls() {
+                if (this.gameState !== 'playing') return;
+                
+                // Jump on shout/yell
+                if (this.shoutDetected && this.player.grounded) {
+                    this.jump();
+                    this.createParticles(this.player.x, this.player.y + this.player.height, '#ffff00', 5);
+                }
+                
+                // Sprint/dash on clap
+                if (this.clapDetected) {
+                    this.player.sprinting = true;
+                    this.player.velocityX = this.player.velocityX > 0 ? 
+                        this.moveSpeed * this.sprintMultiplier : 
+                        -this.moveSpeed * this.sprintMultiplier;
+                    setTimeout(() => this.player.sprinting = false, 300);
+                    this.createParticles(this.player.x, this.player.y + this.player.height, '#00ff88', 8);
+                }
+                
+                // Special ability on whistle
+                if (this.whistleDetected) {
+                    this.activateSpecialAbility();
+                }
+                
+                // Flying/hovering on sustained sound
+                if (this.soundLevel > 25) {
+                    this.player.flying = true;
+                    this.player.velocityY = Math.max(this.player.velocityY - 0.8, -3);
+                } else {
+                    this.player.flying = false;
+                }
+                
+                // Stealth mode in silence
+                if (this.soundLevel < 2) {
+                    this.player.stealth = true;
+                } else {
+                    this.player.stealth = false;
+                }
+                
+                // Attack on sharp sounds
+                if (this.soundLevel > 35) {
+                    this.fireProjectile();
+                }
+                
+                // Horizontal movement based on sound level
+                if (this.soundLevel > 5 && this.soundLevel < 20) {
+                    const direction = Math.sin(Date.now() * 0.01) > 0 ? 1 : -1;
+                    this.player.velocityX = direction * this.moveSpeed * 0.5;
+                }
+            }
+
+            jump() {
+                if (this.player.grounded || this.player.flying) {
+                    this.player.velocityY = this.jumpPower;
+                    this.player.grounded = false;
+                    this.createParticles(this.player.x, this.player.y + this.player.height, '#ffffff', 3);
+                }
+            }
+
+            activateSpecialAbility() {
+                this.player.invulnerable = true;
+                this.player.color = '#9b59b6';
+                setTimeout(() => {
+                    this.player.invulnerable = false;
+                    this.player.color = '#ff6b35';
+                }, 2000);
+                this.createParticles(this.player.x, this.player.y, '#9b59b6', 10);
+            }
+
+            fireProjectile() {
+                const now = Date.now();
+                if (this.lastProjectile && now - this.lastProjectile < 200) return;
+                
+                this.lastProjectile = now;
+                this.projectiles.push({
+                    x: this.player.x + this.player.width,
+                    y: this.player.y + this.player.height / 2,
+                    width: 10,
+                    height: 4,
+                    velocityX: 8,
+                    color: '#ffff00',
+                    life: 100
+                });
+            }
+
+            generateLevel() {
+                // Clear existing objects
+                this.platforms = [];
+                this.enemies = [];
+                this.collectibles = [];
+                
+                // Generate platforms
+                const platformCount = 5 + this.level * 2;
+                for (let i = 0; i < platformCount; i++) {
+                    this.platforms.push({
+                        x: Math.random() * (this.canvas.width - 200),
+                        y: 200 + Math.random() * 400,
+                        width: 100 + Math.random() * 200,
+                        height: 20,
+                        color: '#8FBC8F'
+                    });
+                }
+                
+                // Add ground
+                this.platforms.push({
+                    x: 0,
+                    y: this.canvas.height - 50,
+                    width: this.canvas.width,
+                    height: 50,
+                    color: '#654321'
+                });
+                
+                // Generate enemies
+                const enemyCount = 2 + this.level;
+                for (let i = 0; i < enemyCount; i++) {
+                    this.enemies.push({
+                        x: 200 + Math.random() * (this.canvas.width - 400),
+                        y: this.canvas.height - 100,
+                        width: 30,
+                        height: 40,
+                        velocityX: (Math.random() - 0.5) * 4,
+                        color: '#e74c3c',
+                        health: 2,
+                        type: 'walker'
+                    });
+                }
+                
+                // Generate collectibles
+                const coinCount = 5 + this.level;
+                for (let i = 0; i < coinCount; i++) {
+                    this.collectibles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * (this.canvas.height - 200),
+                        width: 20,
+                        height: 20,
+                        type: 'coin',
+                        collected: false,
+                        animation: 0,
+                        color: '#ffd700'
+                    });
+                }
+            }
+
+            updateGame() {
+                if (this.gameState !== 'playing') return;
+                
+                this.updatePlayer();
+                this.updateEnemies();
+                this.updateProjectiles();
+                this.updateCollectibles();
+                this.updateParticles();
+                this.checkCollisions();
+                this.checkLevelComplete();
+                
+                // Update UI
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('level').textContent = this.level;
+                document.getElementById('coins').textContent = this.coins;
+                document.getElementById('lives').textContent = '❤️'.repeat(this.lives);
+            }
+
+            updatePlayer() {
+                // Apply gravity
+                if (!this.player.flying) {
+                    this.player.velocityY += this.gravity;
+                }
+                
+                // Update position
+                this.player.x += this.player.velocityX;
+                this.player.y += this.player.velocityY;
+                
+                // Boundary checking
+                if (this.player.x < 0) this.player.x = 0;
+                if (this.player.x + this.player.width > this.canvas.width) {
+                    this.player.x = this.canvas.width - this.player.width;
+                }
+                
+                // Platform collision
+                this.player.grounded = false;
+                for (const platform of this.platforms) {
+                    if (this.isColliding(this.player, platform)) {
+                        if (this.player.velocityY > 0 && 
+                            this.player.y < platform.y) {
+                            this.player.y = platform.y - this.player.height;
+                            this.player.velocityY = 0;
+                            this.player.grounded = true;
+                        }
+                    }
+                }
+                
+                // Fall detection
+                if (this.player.y > this.canvas.height) {
+                    this.loseLife();
+                }
+                
+                // Friction
+                if (this.player.grounded && !this.player.sprinting) {
+                    this.player.velocityX *= 0.8;
+                }
+                
+                this.player.animation += 0.1;
+            }
+
+            updateEnemies() {
+                for (let i = this.enemies.length - 1; i >= 0; i--) {
+                    const enemy = this.enemies[i];
+                    
+                    enemy.x += enemy.velocityX;
+                    
+                    // Boundary bouncing
+                    if (enemy.x <= 0 || enemy.x + enemy.width >= this.canvas.width) {
+                        enemy.velocityX *= -1;
+                    }
+                    
+                    // Platform collision for enemies
+                    for (const platform of this.platforms) {
+                        if (this.isColliding(enemy, platform)) {
+                            if (enemy.y < platform.y) {
+                                enemy.y = platform.y - enemy.height;
+                            }
+                        }
+                    }
+                    
+                    // Remove dead enemies
+                    if (enemy.health <= 0) {
+                        this.enemies.splice(i, 1);
+                        this.score += 100;
+                        this.createParticles(enemy.x, enemy.y, '#e74c3c', 8);
+                    }
+                }
+            }
+
+            updateProjectiles() {
+                for (let i = this.projectiles.length - 1; i >= 0; i--) {
+                    const projectile = this.projectiles[i];
+                    
+                    projectile.x += projectile.velocityX;
+                    projectile.life--;
+                    
+                    // Remove old projectiles
+                    if (projectile.life <= 0 || 
+                        projectile.x > this.canvas.width || 
+                        projectile.x < 0) {
+                        this.projectiles.splice(i, 1);
+                        continue;
+                    }
+                    
+                    // Check enemy collision
+                    for (const enemy of this.enemies) {
+                        if (this.isColliding(projectile, enemy)) {
+                            enemy.health--;
+                            this.projectiles.splice(i, 1);
+                            this.createParticles(enemy.x, enemy.y, '#ffff00', 5);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            updateCollectibles() {
+                for (const collectible of this.collectibles) {
+                    if (!collectible.collected) {
+                        collectible.animation += 0.2;
+                        collectible.y += Math.sin(collectible.animation) * 0.5;
+                    }
+                }
+            }
+
+            updateParticles() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const particle = this.particles[i];
+                    
+                    particle.x += particle.velocityX;
+                    particle.y += particle.velocityY;
+                    particle.velocityY += 0.1; // gravity
+                    particle.life--;
+                    particle.alpha *= 0.98;
+                    
+                    if (particle.life <= 0 || particle.alpha < 0.01) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            checkCollisions() {
+                // Player-enemy collision
+                if (!this.player.invulnerable && !this.player.stealth) {
+                    for (const enemy of this.enemies) {
+                        if (this.isColliding(this.player, enemy)) {
+                            this.loseLife();
+                            this.createParticles(this.player.x, this.player.y, '#e74c3c', 10);
+                            break;
+                        }
+                    }
+                }
+                
+                // Player-collectible collision
+                for (const collectible of this.collectibles) {
+                    if (!collectible.collected && this.isColliding(this.player, collectible)) {
+                        collectible.collected = true;
+                        this.coins++;
+                        this.score += 50;
+                        this.createParticles(collectible.x, collectible.y, collectible.color, 6);
+                        this.checkAchievements();
+                    }
+                }
+            }
+
+            checkLevelComplete() {
+                const allCoinsCollected = this.collectibles.every(c => c.collected);
+                const allEnemiesDefeated = this.enemies.length === 0;
+                
+                if (allCoinsCollected && allEnemiesDefeated) {
+                    this.level++;
+                    this.score += 500;
+                    this.generateLevel();
+                    this.showAchievement(`Level ${this.level} Unlocked!`);
+                    this.player.x = 100;
+                    this.player.y = 400;
+                }
+            }
+
+            isColliding(obj1, obj2) {
+                return obj1.x < obj2.x + obj2.width &&
+                       obj1.x + obj1.width > obj2.x &&
+                       obj1.y < obj2.y + obj2.height &&
+                       obj1.y + obj1.height > obj2.y;
+            }
+
+            createParticles(x, y, color, count) {
+                for (let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        velocityX: (Math.random() - 0.5) * 6,
+                        velocityY: (Math.random() - 0.5) * 6,
+                        color: color,
+                        life: 30 + Math.random() * 20,
+                        alpha: 1,
+                        size: 2 + Math.random() * 3
+                    });
+                }
+            }
+
+            loseLife() {
+                if (this.player.invulnerable) return;
+                
+                this.lives--;
+                this.player.invulnerable = true;
+                
+                // Reset player position
+                this.player.x = 100;
+                this.player.y = 400;
+                this.player.velocityX = 0;
+                this.player.velocityY = 0;
+                
+                setTimeout(() => {
+                    this.player.invulnerable = false;
+                }, 2000);
+                
+                if (this.lives <= 0) {
+                    this.gameOver();
+                }
+            }
+
+            gameOver() {
+                this.gameState = 'gameOver';
+                // Show game over screen logic here
+                alert(`Game Over! Final Score: ${this.score}`);
+                this.resetGame();
+            }
+
+            resetGame() {
+                this.score = 0;
+                this.level = 1;
+                this.lives = 3;
+                this.coins = 0;
+                this.player.x = 100;
+                this.player.y = 400;
+                this.player.velocityX = 0;
+                this.player.velocityY = 0;
+                this.generateLevel();
+                this.gameState = 'menu';
+                document.getElementById('startMenu').style.display = 'block';
+            }
+
+            checkAchievements() {
+                const achievements = [
+                    { id: 'first_coin', condition: () => this.coins >= 1, text: 'First Coin Collected!' },
+                    { id: 'coin_collector', condition: () => this.coins >= 10, text: 'Coin Collector - 10 coins!' },
+                    { id: 'level_2', condition: () => this.level >= 2, text: 'Level 2 Reached!' },
+                    { id: 'high_score', condition: () => this.score >= 1000, text: 'High Score - 1000 points!' },
+                    { id: 'survivor', condition: () => this.score >= 500 && this.lives === 3, text: 'Perfect Survivor!' }
+                ];
+
+                for (const achievement of achievements) {
+                    if (!this.unlockedAchievements.has(achievement.id) && achievement.condition()) {
+                        this.unlockedAchievements.add(achievement.id);
+                        this.showAchievement(achievement.text);
+                    }
+                }
+            }
+
+            showAchievement(text) {
+                const achievementEl = document.getElementById('achievement');
+                achievementEl.textContent = `🏆 ${text}`;
+                achievementEl.classList.add('show');
+                
+                setTimeout(() => {
+                    achievementEl.classList.remove('show');
+                }, 3000);
+            }
+
+            render() {
+                // Clear canvas
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw background gradient
+                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                gradient.addColorStop(0, '#87CEEB');
+                gradient.addColorStop(0.7, '#98FB98');
+                gradient.addColorStop(1, '#8FBC8F');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                if (this.gameState === 'playing') {
+                    this.renderGame();
+                }
+            }
+
+            renderGame() {
+                // Draw platforms
+                for (const platform of this.platforms) {
+                    this.ctx.fillStyle = platform.color;
+                    this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    
+                    // Add platform shading
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    this.ctx.fillRect(platform.x, platform.y, platform.width, 5);
+                }
+                
+                // Draw collectibles
+                for (const collectible of this.collectibles) {
+                    if (!collectible.collected) {
+                        this.ctx.save();
+                        this.ctx.translate(collectible.x + collectible.width/2, collectible.y + collectible.height/2);
+                        this.ctx.rotate(collectible.animation * 0.1);
+                        
+                        // Draw coin with glow effect
+                        this.ctx.shadowColor = collectible.color;
+                        this.ctx.shadowBlur = 10;
+                        this.ctx.fillStyle = collectible.color;
+                        this.ctx.beginPath();
+                        this.ctx.arc(0, 0, collectible.width/2, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        
+                        // Inner shine
+                        this.ctx.shadowBlur = 0;
+                        this.ctx.fillStyle = '#ffffff';
+                        this.ctx.beginPath();
+                        this.ctx.arc(-3, -3, 3, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        
+                        this.ctx.restore();
+                    }
+                }
+                
+                // Draw enemies
+                for (const enemy of this.enemies) {
+                    this.ctx.fillStyle = enemy.color;
+                    this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    
+                    // Enemy eyes
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fillRect(enemy.x + 5, enemy.y + 5, 8, 8);
+                    this.ctx.fillRect(enemy.x + 17, enemy.y + 5, 8, 8);
+                    this.ctx.fillStyle = '#000000';
+                    this.ctx.fillRect(enemy.x + 7, enemy.y + 7, 4, 4);
+                    this.ctx.fillRect(enemy.x + 19, enemy.y + 7, 4, 4);
+                    
+                    // Health bar
+                    this.ctx.fillStyle = '#000000';
+                    this.ctx.fillRect(enemy.x, enemy.y - 10, enemy.width, 4);
+                    this.ctx.fillStyle = '#ff0000';
+                    this.ctx.fillRect(enemy.x + 1, enemy.y - 9, (enemy.width - 2) * (enemy.health / 2), 2);
+                }
+                
+                // Draw projectiles
+                for (const projectile of this.projectiles) {
+                    this.ctx.save();
+                    this.ctx.shadowColor = projectile.color;
+                    this.ctx.shadowBlur = 5;
+                    this.ctx.fillStyle = projectile.color;
+                    this.ctx.fillRect(projectile.x, projectile.y, projectile.width, projectile.height);
+                    this.ctx.restore();
+                }
+                
+                // Draw particles
+                for (const particle of this.particles) {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = particle.alpha;
+                    this.ctx.fillStyle = particle.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+                
+                // Draw player
+                this.drawPlayer();
+            }
+
+            drawPlayer() {
+                this.ctx.save();
+                
+                // Player glow effects
+                if (this.player.invulnerable) {
+                    this.ctx.shadowColor = '#9b59b6';
+                    this.ctx.shadowBlur = 20;
+                } else if (this.player.stealth) {
+                    this.ctx.globalAlpha = 0.5;
+                } else if (this.player.flying) {
+                    this.ctx.shadowColor = '#00ff88';
+                    this.ctx.shadowBlur = 15;
+                } else if (this.player.sprinting) {
+                    this.ctx.shadowColor = '#ff6b35';
+                    this.ctx.shadowBlur = 10;
+                }
+                
+                // Draw player body
+                this.ctx.fillStyle = this.player.color;
+                this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+                
+                // Player face
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(this.player.x + 8, this.player.y + 8, 10, 10);
+                this.ctx.fillRect(this.player.x + 22, this.player.y + 8, 10, 10);
+                
+                // Eyes
+                this.ctx.fillStyle = '#000000';
+                this.ctx.fillRect(this.player.x + 10, this.player.y + 10, 6, 6);
+                this.ctx.fillRect(this.player.x + 24, this.player.y + 10, 6, 6);
+                
+                // Mouth (changes based on state)
+                this.ctx.fillStyle = '#000000';
+                if (this.shoutDetected) {
+                    this.ctx.fillRect(this.player.x + 15, this.player.y + 25, 10, 8);
+                } else if (this.whistleDetected) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.player.x + 20, this.player.y + 28, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                } else {
+                    this.ctx.fillRect(this.player.x + 15, this.player.y + 25, 10, 3);
+                }
+                
+                // Flying trail effect
+                if (this.player.flying) {
+                    for (let i = 0; i < 5; i++) {
+                        this.ctx.globalAlpha = 0.3 - (i * 0.05);
+                        this.ctx.fillStyle = '#00ff88';
+                        this.ctx.fillRect(
+                            this.player.x - (i * 8), 
+                            this.player.y + this.player.height - 5, 
+                            this.player.width, 
+                            5
+                        );
+                    }
+                }
+                
+                this.ctx.restore();
+            }
+
+            gameLoop() {
+                this.analyzeAudio();
+                this.updateGame();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+
+        // Global game instance
+        let game;
+
+        async function startGame() {
+            const menu = document.getElementById('startMenu');
+            menu.style.display = 'none';
+            
+            game = new SoundActivatedGame();
+            
+            // Initialize audio
+            const audioInitialized = await game.initializeAudio();
+            
+            if (audioInitialized) {
+                game.gameState = 'playing';
+            } else {
+                alert('Microphone access is required for the full experience. You can still play with keyboard controls (Arrow keys + Space).');
+                game.gameState = 'playing';
+            }
+        }
+
+        // Initialize visualizer bars on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create visualizer bars
+            const visualizerContainer = document.getElementById('visualizerBars');
+            for (let i = 0; i < 32; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                visualizerContainer.appendChild(bar);
+            }
+        });
+    </script>
+</body>
+</html>
