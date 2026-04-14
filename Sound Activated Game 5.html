@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound-Activated Adventure Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .header {
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .title {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 10px;
+        }
+
+        .controls-info {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        .game-container {
+            position: relative;
+            width: 1000px;
+            height: 600px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .player {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border-radius: 50%;
+            bottom: 100px;
+            left: 50px;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border: 2px solid white;
+        }
+
+        .player.jumping {
+            transform: translateY(-80px) scale(1.1);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .obstacle {
+            position: absolute;
+            width: 30px;
+            height: 50px;
+            background: linear-gradient(45deg, #ff4757, #2f3542);
+            bottom: 100px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .collectible {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: radial-gradient(circle, #ffd700, #ffed4e);
+            border-radius: 50%;
+            bottom: 120px;
+            animation: float 2s ease-in-out infinite;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+            border: 2px solid #fff;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .enemy {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            background: radial-gradient(circle, #e74c3c, #c0392b);
+            border-radius: 40% 60% 70% 30%;
+            bottom: 105px;
+            animation: wiggle 1.5s ease-in-out infinite;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(-3deg); }
+            50% { transform: rotate(3deg); }
+        }
+
+        .power-up {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: conic-gradient(from 0deg, #ff006e, #8338ec, #3a86ff, #06ffa5, #ffbe0b, #ff006e);
+            border-radius: 50%;
+            bottom: 115px;
+            animation: spin 3s linear infinite;
+            box-shadow: 0 0 20px rgba(131, 56, 236, 0.8);
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .audio-visualizer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 10px;
+            backdrop-filter: blur(5px);
+        }
+
+        .frequency-bar {
+            display: inline-block;
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(to top, #00ff88, #00ccff);
+            margin: 0 1px;
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+
+        .sound-commands {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        .start-button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .start-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #fff;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle-float 1s ease-out forwards;
+        }
+
+        @keyframes particle-float {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0) translateY(-50px);
+            }
+        }
+
+        .combo-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            animation: combo-pop 1s ease-out;
+        }
+
+        @keyframes combo-pop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">🎮 Sound-Activated Adventure 🔊</div>
+        <div class="controls-info">
+            Control the game with your voice and sounds! Yell to jump, clap to dash, whistle to slow time!
+        </div>
+        <button class="start-button" id="startBtn">🎤 Start Game</button>
+    </div>
+
+    <div class="game-container" id="gameContainer" style="display: none;">
+        <div class="player" id="player"></div>
+        
+        <div class="hud">
+            <div>Score: <span id="score">0</span></div>
+            <div>Lives: <span id="lives">3</span></div>
+            <div>Combo: <span id="combo">0</span></div>
+            <div>Level: <span id="level">1</span></div>
+        </div>
+
+        <div class="audio-visualizer" id="visualizer">
+            <div style="color: white; font-size: 0.8rem; margin-bottom: 5px;">Audio Input</div>
+            <div id="frequencyBars"></div>
+        </div>
+
+        <div class="sound-commands">
+            <div><strong>🗣️ YELL/SHOUT:</strong> Jump over obstacles</div>
+            <div><strong>👏 CLAP:</strong> Dash forward quickly</div>
+            <div><strong>🎵 WHISTLE:</strong> Activate slow motion</div>
+            <div><strong>🔇 SILENCE:</strong> Move backward</div>
+        </div>
+
+        <div class="game-over" id="gameOver">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <button class="start-button" onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        class SoundActivatedGame {
+            constructor() {
+                this.audioContext = null;
+                this.analyser = null;
+                this.microphone = null;
+                this.dataArray = null;
+                this.isRunning = false;
+                
+                // Game state
+                this.score = 0;
+                this.lives = 3;
+                this.combo = 0;
+                this.level = 1;
+                this.player = { x: 50, y: 100, isJumping: false, isDashing: false };
+                this.gameObjects = [];
+                this.particles = [];
+                
+                // Audio analysis
+                this.volumeThreshold = 30;
+                this.frequencyData = [];
+                this.lastSoundTime = 0;
+                this.soundCooldown = 300;
+                this.isSlowMotion = false;
+                this.slowMotionDuration = 0;
+                
+                // Game timing
+                this.lastSpawnTime = 0;
+                this.spawnInterval = 2000;
+                this.gameSpeed = 1;
+                
+                this.init();
+            }
+
+            async init() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.setupAudioAnalysis();
+                    this.setupEventListeners();
+                    this.createFrequencyBars();
+                } catch (error) {
+                    console.error('Audio initialization failed:', error);
+                    alert('Microphone access is required for this game to work!');
+                }
+            }
+
+            async setupAudioAnalysis() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: { 
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        } 
+                    });
+                    
+                    this.microphone = this.audioContext.createMediaStreamSource(stream);
+                    this.analyser = this.audioContext.createAnalyser();
+                    
+                    this.analyser.fftSize = 512;
+                    this.analyser.smoothingTimeConstant = 0.8;
+                    
+                    const bufferLength = this.analyser.frequencyBinCount;
+                    this.dataArray = new Uint8Array(bufferLength);
+                    
+                    this.microphone.connect(this.analyser);
+                    
+                } catch (error) {
+                    console.error('Microphone setup failed:', error);
+                    throw error;
+                }
+            }
+
+            createFrequencyBars() {
+                const barsContainer = document.getElementById('frequencyBars');
+                barsContainer.innerHTML = '';
+                
+                for (let i = 0; i < 40; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'frequency-bar';
+                    barsContainer.appendChild(bar);
+                }
+            }
+
+            setupEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => {
+                    this.startGame();
+                });
+                
+                window.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.jump();
+                    }
+                });
+            }
+
+            startGame() {
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('gameContainer').style.display = 'block';
+                
+                this.resetGame();
+                this.isRunning = true;
+                this.gameLoop();
+            }
+
+            resetGame() {
+                this.score = 0;
+                this.lives = 3;
+                this.combo = 0;
+                this.level = 1;
+                this.player = { x: 50, y: 100, isJumping: false, isDashing: false };
+                this.gameObjects = [];
+                this.particles = [];
+                this.isSlowMotion = false;
+                this.slowMotionDuration = 0;
+                this.gameSpeed = 1;
+                this.lastSpawnTime = 0;
+                
+                this.updateHUD();
+                document.getElementById('gameOver').style.display = 'none';
+            }
+
+            gameLoop() {
+                if (!this.isRunning) return;
+                
+                this.analyzeAudio();
+                this.updatePlayer();
+                this.updateGameObjects();
+                this.updateParticles();
+                this.checkCollisions();
+                this.spawnObjects();
+                this.updateSlowMotion();
+                this.updateVisualizer();
+                
+                requestAnimationFrame(() => this.gameLoop());
+            }
+
+            analyzeAudio() {
+                if (!this.analyser) return;
+                
+                this.analyser.getByteFrequencyData(this.dataArray);
+                
+                // Calculate overall volume
+                const volume = this.dataArray.reduce((sum, value) => sum + value, 0) / this.dataArray.length;
+                
+                // Detect different sound patterns
+                const now = Date.now();
+                if (now - this.lastSoundTime < this.soundCooldown) return;
+                
+                // High-frequency detection (whistle)
+                const highFreqStart = Math.floor(this.dataArray.length * 0.7);
+                const highFreqVolume = this.dataArray.slice(highFreqStart).reduce((sum, val) => sum + val, 0) / (this.dataArray.length - highFreqStart);
+                
+                // Sharp attack detection (clap)
+                const sharpAttack = this.detectSharpAttack();
+                
+                // Loud volume detection (yell/shout)
+                const isLoudSound = volume > this.volumeThreshold + 40;
+                
+                // Execute actions based on sound analysis
+                if (highFreqVolume > 60 && volume > 25) {
+                    this.activateSlowMotion();
+                    this.lastSoundTime = now;
+                } else if (sharpAttack) {
+                    this.dash();
+                    this.lastSoundTime = now;
+                } else if (isLoudSound) {
+                    this.jump();
+                    this.lastSoundTime = now;
+                } else if (volume < 10) {
+                    this.moveBackward();
+                }
+            }
+
+            detectSharpAttack() {
+                if (this.previousVolume === undefined) {
+                    this.previousVolume = 0;
+                    return false;
+                }
+                
+                const currentVolume = this.dataArray.reduce((sum, value) => sum + value, 0) / this.dataArray.length;
+                const volumeIncrease = currentVolume - this.previousVolume;
+                this.previousVolume = currentVolume;
+                
+                return volumeIncrease > 30 && currentVolume > 40;
+            }
+
+            jump() {
+                if (this.player.isJumping) return;
+                
+                this.player.isJumping = true;
+                document.getElementById('player').classList.add('jumping');
+                
+                this.createParticles(this.player.x + 20, this.player.y + 20, '#4ecdc4');
+                
+                setTimeout(() => {
+                    this.player.isJumping = false;
+                    document.getElementById('player').classList.remove('jumping');
+                }, 600);
+            }
+
+            dash() {
+                if (this.player.isDashing) return;
+                
+                this.player.isDashing = true;
+                this.player.x = Math.min(this.player.x + 100, 950);
+                
+                this.createParticles(this.player.x, this.player.y + 20, '#ff6b6b');
+                this.updatePlayerPosition();
+                
+                setTimeout(() => {
+                    this.player.isDashing = false;
+                }, 300);
+            }
+
+            moveBackward() {
+                this.player.x = Math.max(this.player.x - 1 * this.gameSpeed, 10);
+                this.updatePlayerPosition();
+            }
+
+            activateSlowMotion() {
+                this.isSlowMotion = true;
+                this.slowMotionDuration = 2000;
+                this.gameSpeed = 0.3;
+                
+                this.createParticles(this.player.x + 20, this.player.y + 20, '#8338ec');
+                
+                // Visual effect
+                document.body.style.filter = 'hue-rotate(180deg) saturate(1.5)';
+            }
+
+            updateSlowMotion() {
+                if (this.isSlowMotion) {
+                    this.slowMotionDuration -= 16;
+                    if (this.slowMotionDuration <= 0) {
+                        this.isSlowMotion = false;
+                        this.gameSpeed = 1;
+                        document.body.style.filter = '';
+                    }
+                }
+            }
+
+            createParticles(x, y, color) {
+                for (let i = 0; i < 8; i++) {
+                    const particle = {
+                        x: x + (Math.random() - 0.5) * 20,
+                        y: y + (Math.random() - 0.5) * 20,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        life: 1.0,
+                        color: color
+                    };
+                    this.particles.push(particle);
+                    this.createParticleElement(particle);
+                }
+            }
+
+            createParticleElement(particle) {
+                const element = document.createElement('div');
+                element.className = 'particle';
+                element.style.left = particle.x + 'px';
+                element.style.bottom = particle.y + 'px';
+                element.style.background = particle.color;
+                document.getElementById('gameContainer').appendChild(element);
+                
+                particle.element = element;
+                
+                setTimeout(() => {
+                    if (element.parentNode) {
+                        element.parentNode.removeChild(element);
+                    }
+                }, 1000);
+            }
+
+            updateParticles() {
+                this.particles = this.particles.filter(particle => {
+                    particle.life -= 0.02;
+                    if (particle.life <= 0) {
+                        if (particle.element && particle.element.parentNode) {
+                            particle.element.parentNode.removeChild(particle.element);
+                        }
+                        return false;
+                    }
+                    
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vy += 0.1; // gravity
+                    
+                    if (particle.element) {
+                        particle.element.style.left = particle.x + 'px';
+                        particle.element.style.bottom = particle.y + 'px';
+                        particle.element.style.opacity = particle.life;
+                    }
+                    
+                    return true;
+                });
+            }
+
+            spawnObjects() {
+                const now = Date.now();
+                if (now - this.lastSpawnTime < this.spawnInterval / this.gameSpeed) return;
+                
+                this.lastSpawnTime = now;
+                
+                const types = ['obstacle', 'collectible', 'enemy', 'power-up'];
+                const weights = [0.4, 0.3, 0.2, 0.1];
+                const type = this.weightedRandom(types, weights);
+                
+                this.spawnObject(type);
+            }
+
+            weightedRandom(items, weights) {
+                const random = Math.random();
+                let weightSum = 0;
+                
+                for (let i = 0; i < items.length; i++) {
+                    weightSum += weights[i];
+                    if (random <= weightSum) {
+                        return items[i];
+                    }
+                }
+                return items[items.length - 1];
+            }
+
+            spawnObject(type) {
+                const obj = {
+                    type: type,
+                    x: 1000,
+                    y: 100,
+                    speed: 2 + this.level * 0.5,
+                    element: this.createElement(type)
+                };
+                
+                this.gameObjects.push(obj);
+            }
+
+            createElement(type) {
+                const element = document.createElement('div');
+                element.className = type;
+                element.style.left = '1000px';
+                document.getElementById('gameContainer').appendChild(element);
+                return element;
+            }
+
+            updateGameObjects() {
+                this.gameObjects = this.gameObjects.filter(obj => {
+                    obj.x -= obj.speed * this.gameSpeed;
+                    obj.element.style.left = obj.x + 'px';
+                    
+                    if (obj.x < -50) {
+                        obj.element.parentNode.removeChild(obj.element);
+                        return false;
+                    }
+                    
+                    return true;
+                });
+            }
+
+            checkCollisions() {
+                this.gameObjects.forEach((obj, index) => {
+                    const distance = Math.sqrt(
+                        Math.pow(obj.x - this.player.x, 2) + 
+                        Math.pow(obj.y - this.player.y, 2)
+                    );
+                    
+                    if (distance < 30) {
+                        this.handleCollision(obj, index);
+                    }
+                });
+            }
+
+            handleCollision(obj, index) {
+                obj.element.parentNode.removeChild(obj.element);
+                this.gameObjects.splice(index, 1);
+                
+                switch (obj.type) {
+                    case 'collectible':
+                        this.score += 100;
+                        this.combo++;
+                        this.createParticles(obj.x, obj.y, '#ffd700');
+                        break;
+                        
+                    case 'power-up':
+                        this.score += 500;
+                        this.lives++;
+                        this.createParticles(obj.x, obj.y, '#8338ec');
+                        break;
+                        
+                    case 'obstacle':
+                    case 'enemy':
+                        if (!this.player.isJumping) {
+                            this.lives--;
+                            this.combo = 0;
+                            this.createParticles(obj.x, obj.y, '#e74c3c');
+                            
+                            if (this.lives <= 0) {
+                                this.gameOver();
+                            }
+                        }
+                        break;
+                }
+                
+                // Combo bonus
+                if (this.combo > 0 && this.combo % 5 === 0) {
+                    this.showComboBonus();
+                    this.score += this.combo * 50;
+                }
+                
+                // Level progression
+                if (this.score > this.level * 1000) {
+                    this.level++;
+                    this.spawnInterval = Math.max(1000, this.spawnInterval - 100);
+                }
+                
+                this.updateHUD();
+            }
+
+            showComboBonus() {
+                const indicator = document.createElement('div');
+                indicator.className = 'combo-indicator';
+                indicator.textContent = `COMBO x${this.combo}!`;
+                document.getElementById('gameContainer').appendChild(indicator);
+                
+                setTimeout(() => {
+                    if (indicator.parentNode) {
+                        indicator.parentNode.removeChild(indicator);
+                    }
+                }, 1000);
+            }
+
+            updatePlayerPosition() {
+                document.getElementById('player').style.left = this.player.x + 'px';
+            }
+
+            updateHUD() {
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('lives').textContent = this.lives;
+                document.getElementById('combo').textContent = this.combo;
+                document.getElementById('level').textContent = this.level;
+            }
+
+            updateVisualizer() {
+                if (!this.dataArray) return;
+                
+                const bars = document.querySelectorAll('.frequency-bar');
+                const step = Math.floor(this.dataArray.length / bars.length);
+                
+                bars.forEach((bar, i) => {
+                    const value = this.dataArray[i * step];
+                    const height = Math.max(2, (value / 255) * 60);
+                    bar.style.height = height + 'px';
+                    bar.style.background = `linear-gradient(to top, 
+                        hsl(${120 + (value / 255) * 180}, 70%, 50%),
+                        hsl(${180 + (value / 255) * 180}, 70%, 70%))`;
+                });
+            }
+
+            gameOver() {
+                this.isRunning = false;
+                document.getElementById('finalScore').textContent = this.score;
+                document.getElementById('gameOver').style.display = 'block';
+            }
+        }
+
+        // Initialize game
+        let game;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            game = new SoundActivatedGame();
+        });
+
+        function restartGame() {
+            if (game) {
+                game.startGame();
+            }
+        }
+
+        // Handle page visibility for audio context
+        document.addEventListener('visibilitychange', () => {
+            if (game && game.audioContext) {
+                if (document.hidden && game.audioContext.state === 'running') {
+                    game.audioContext.suspend();
+                } else if (!document.hidden && game.audioContext.state === 'suspended') {
+                    game.audioContext.resume();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
