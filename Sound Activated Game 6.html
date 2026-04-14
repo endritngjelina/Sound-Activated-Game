@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SonicRunner - Sound-Activated Adventure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            color: white;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .score {
+            font-size: 24px;
+        }
+
+        .audio-indicator {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .volume-bar {
+            width: 200px;
+            height: 8px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .volume-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #FFC107, #f44336);
+            width: 0%;
+            transition: width 0.1s ease;
+            border-radius: 4px;
+        }
+
+        .frequency-bars {
+            display: flex;
+            gap: 2px;
+            height: 30px;
+        }
+
+        .freq-bar {
+            width: 4px;
+            background: #4CAF50;
+            border-radius: 2px;
+            transition: height 0.1s ease;
+            height: 2px;
+        }
+
+        .canvas {
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 50%, #90EE90 100%);
+            display: block;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: white;
+            z-index: 100;
+        }
+
+        .control-item {
+            display: inline-block;
+            margin: 0 20px;
+            padding: 10px 20px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+            font-size: 14px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            color: white;
+            text-align: center;
+        }
+
+        .game-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2, #f093fb);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+        }
+
+        .start-btn {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+        }
+
+        .start-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .instructions {
+            max-width: 600px;
+            margin: 20px;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .power-up-indicator {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            color: white;
+            font-weight: bold;
+            background: rgba(0,0,0,0.4);
+            padding: 10px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .pulsing {
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 300;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="start-screen" id="startScreen">
+            <div class="game-title">🎵 SONIC RUNNER 🎵</div>
+            <div class="instructions">
+                <h3>Sound-Activated Adventure Game</h3>
+                <p><strong>🎤 YELL/SHOUT</strong> - Make your character jump over obstacles</p>
+                <p><strong>👏 CLAP</strong> - Activate shields and collect power-ups</p>
+                <p><strong>🗣️ WHISTLE</strong> - Slow down time for precision movements</p>
+                <p><strong>📢 LOUD NOISES</strong> - Boost speed and destroy enemies</p>
+                <br>
+                <p>Navigate through an endless runner using only your voice and sounds!</p>
+            </div>
+            <button class="start-btn" id="startBtn">🎮 START GAME</button>
+            <div style="margin-top: 20px; font-size: 12px; opacity: 0.7;">
+                Microphone access required • Best with headphones
+            </div>
+        </div>
+
+        <div class="hud">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="audio-indicator">
+                <div class="frequency-bars" id="frequencyBars"></div>
+                <div class="volume-bar">
+                    <div class="volume-fill" id="volumeFill"></div>
+                </div>
+                <span id="audioStatus">🎤</span>
+            </div>
+            <div class="power-up-indicator" id="powerUpIndicator" style="display: none;"></div>
+        </div>
+
+        <canvas class="canvas" id="gameCanvas"></canvas>
+
+        <div class="controls">
+            <div class="control-item">🎤 Yell to Jump</div>
+            <div class="control-item">👏 Clap for Shield</div>
+            <div class="control-item">📢 Loud = Speed Boost</div>
+        </div>
+    </div>
+
+    <script>
+        class SoundGameEngine {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.audioContext = null;
+                this.analyser = null;
+                this.microphone = null;
+                this.dataArray = null;
+                this.frequencyData = null;
+                
+                // Game state
+                this.gameState = 'menu'; // menu, playing, paused, gameOver
+                this.score = 0;
+                this.gameSpeed = 2;
+                this.lastTime = 0;
+                this.particles = [];
+                this.obstacles = [];
+                this.powerUps = [];
+                this.backgroundElements = [];
+                
+                // Audio analysis
+                this.volumeHistory = [];
+                this.frequencyHistory = [];
+                this.audioThreshold = 30;
+                this.clapThreshold = 50;
+                this.yellThreshold = 70;
+                this.whistleFreqRange = [1000, 4000];
+                
+                // Player properties
+                this.player = {
+                    x: 100,
+                    y: 0,
+                    width: 40,
+                    height: 40,
+                    velocityY: 0,
+                    onGround: true,
+                    shield: false,
+                    shieldTime: 0,
+                    speedBoost: false,
+                    speedBoostTime: 0,
+                    timeSlow: false,
+                    timeSlowTime: 0
+                };
+                
+                this.setupCanvas();
+                this.setupUI();
+                this.createFrequencyBars();
+            }
+
+            setupCanvas() {
+                const resizeCanvas = () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                    this.player.y = this.canvas.height - 100;
+                };
+                
+                window.addEventListener('resize', resizeCanvas);
+                resizeCanvas();
+            }
+
+            setupUI() {
+                document.getElementById('startBtn').addEventListener('click', () => {
+                    this.initAudio();
+                });
+            }
+
+            createFrequencyBars() {
+                const container = document.getElementById('frequencyBars');
+                for (let i = 0; i < 16; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'freq-bar';
+                    container.appendChild(bar);
+                }
+            }
+
+            async initAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            sampleRate: 44100
+                        } 
+                    });
+                    
+                    this.analyser = this.audioContext.createAnalyser();
+                    this.analyser.fftSize = 2048;
+                    this.analyser.smoothingTimeConstant = 0.3;
+                    
+                    this.microphone = this.audioContext.createMediaStreamSource(stream);
+                    this.microphone.connect(this.analyser);
+                    
+                    this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                    this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
+                    
+                    document.getElementById('startScreen').style.display = 'none';
+                    this.gameState = 'playing';
+                    this.gameLoop();
+                } catch (error) {
+                    console.error('Error accessing microphone:', error);
+                    alert('Microphone access required to play. Please allow microphone access and refresh.');
+                }
+            }
+
+            analyzeAudio() {
+                if (!this.analyser) return;
+                
+                this.analyser.getByteTimeDomainData(this.dataArray);
+                this.analyser.getByteFrequencyData(this.frequencyData);
+                
+                // Calculate volume
+                let sum = 0;
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const sample = (this.dataArray[i] - 128) / 128;
+                    sum += sample * sample;
+                }
+                const volume = Math.sqrt(sum / this.dataArray.length) * 100;
+                
+                // Update volume history
+                this.volumeHistory.push(volume);
+                if (this.volumeHistory.length > 10) this.volumeHistory.shift();
+                
+                // Detect sound events
+                this.detectSoundEvents(volume);
+                
+                // Update UI
+                this.updateAudioUI(volume);
+                
+                return volume;
+            }
+
+            detectSoundEvents(volume) {
+                const avgVolume = this.volumeHistory.reduce((a, b) => a + b, 0) / this.volumeHistory.length;
+                const volumeSpike = volume - avgVolume;
+                
+                // Detect frequency patterns
+                const lowFreq = this.getFrequencyRange(0, 100);
+                const midFreq = this.getFrequencyRange(100, 1000);
+                const highFreq = this.getFrequencyRange(1000, 4000);
+                
+                // YELL/SHOUT detection (high volume + broad spectrum)
+                if (volume > this.yellThreshold && volumeSpike > 20) {
+                    this.handleYell();
+                    this.createSoundEffect('yell', volume);
+                }
+                
+                // CLAP detection (sharp spike + high frequency)
+                if (volumeSpike > 25 && highFreq > 30) {
+                    this.handleClap();
+                    this.createSoundEffect('clap', volume);
+                }
+                
+                // WHISTLE detection (sustained high frequency)
+                if (highFreq > 40 && midFreq < 20 && lowFreq < 15) {
+                    this.handleWhistle();
+                    this.createSoundEffect('whistle', volume);
+                }
+                
+                // Speed boost (very loud sustained sound)
+                if (volume > 80) {
+                    this.handleSpeedBoost();
+                    this.createSoundEffect('boost', volume);
+                }
+            }
+
+            getFrequencyRange(startHz, endHz) {
+                const nyquist = this.audioContext.sampleRate / 2;
+                const startBin = Math.floor((startHz / nyquist) * this.frequencyData.length);
+                const endBin = Math.floor((endHz / nyquist) * this.frequencyData.length);
+                
+                let sum = 0;
+                for (let i = startBin; i < endBin; i++) {
+                    sum += this.frequencyData[i];
+                }
+                return sum / (endBin - startBin);
+            }
+
+            handleYell() {
+                if (this.player.onGround) {
+                    this.player.velocityY = -18;
+                    this.player.onGround = false;
+                    this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height, '#FFD700', 8);
+                    this.showAudioFeedback('JUMP! 🚀');
+                }
+            }
+
+            handleClap() {
+                this.player.shield = true;
+                this.player.shieldTime = 180; // 3 seconds at 60fps
+                this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, '#00BFFF', 12);
+                this.showAudioFeedback('SHIELD! 🛡️');
+            }
+
+            handleWhistle() {
+                this.player.timeSlow = true;
+                this.player.timeSlowTime = 300; // 5 seconds
+                this.showAudioFeedback('TIME SLOW! ⏰');
+            }
+
+            handleSpeedBoost() {
+                this.player.speedBoost = true;
+                this.player.speedBoostTime = 120; // 2 seconds
+                this.createParticles(this.player.x, this.player.y + this.player.height, '#FF4500', 15);
+                this.showAudioFeedback('BOOST! ⚡');
+            }
+
+            createSoundEffect(type, intensity) {
+                const colors = {
+                    yell: '#FFD700',
+                    clap: '#00BFFF', 
+                    whistle: '#FF69B4',
+                    boost: '#FF4500'
+                };
+                
+                const count = Math.min(Math.floor(intensity / 10), 20);
+                this.createParticles(50, 50, colors[type], count);
+            }
+
+            showAudioFeedback(text) {
+                const indicator = document.getElementById('audioStatus');
+                const original = indicator.textContent;
+                indicator.textContent = text;
+                indicator.classList.add('pulsing');
+                
+                setTimeout(() => {
+                    indicator.textContent = original;
+                    indicator.classList.remove('pulsing');
+                }, 1000);
+            }
+
+            updateAudioUI(volume) {
+                // Update volume bar
+                const fill = document.getElementById('volumeFill');
+                fill.style.width = `${Math.min(volume * 2, 100)}%`;
+                
+                // Update frequency bars
+                const bars = document.querySelectorAll('.freq-bar');
+                for (let i = 0; i < bars.length; i++) {
+                    const freqIndex = Math.floor((i / bars.length) * this.frequencyData.length);
+                    const height = (this.frequencyData[freqIndex] / 255) * 30;
+                    bars[i].style.height = `${height}px`;
+                }
+            }
+
+            createParticles(x, y, color, count) {
+                for (let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x: x + (Math.random() - 0.5) * 40,
+                        y: y + (Math.random() - 0.5) * 40,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8,
+                        color: color,
+                        size: Math.random() * 6 + 2,
+                        life: 60,
+                        maxLife: 60
+                    });
+                }
+            }
+
+            spawnObstacle() {
+                if (Math.random() < 0.02 + (this.score / 10000)) {
+                    const types = ['spike', 'wall', 'enemy'];
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    
+                    this.obstacles.push({
+                        type: type,
+                        x: this.canvas.width,
+                        y: this.canvas.height - 100,
+                        width: type === 'wall' ? 20 : 30,
+                        height: type === 'spike' ? 20 : (type === 'wall' ? 60 : 30),
+                        color: type === 'enemy' ? '#FF4444' : '#8B4513'
+                    });
+                }
+            }
+
+            spawnPowerUp() {
+                if (Math.random() < 0.005) {
+                    const types = ['coin', 'star', 'heart'];
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    
+                    this.powerUps.push({
+                        type: type,
+                        x: this.canvas.width,
+                        y: this.canvas.height - 150 - Math.random() * 100,
+                        width: 25,
+                        height: 25,
+                        color: type === 'coin' ? '#FFD700' : (type === 'star' ? '#FF69B4' : '#FF0000'),
+                        bounce: 0
+                    });
+                }
+            }
+
+            updateGame(deltaTime) {
+                if (this.gameState !== 'playing') return;
+                
+                const timeMultiplier = this.player.timeSlow ? 0.3 : 1.0;
+                const speedMultiplier = this.player.speedBoost ? 2.0 : 1.0;
+                const effectiveDelta = deltaTime * timeMultiplier;
+                
+                // Update player physics
+                this.updatePlayer(effectiveDelta);
+                
+                // Update power-up timers
+                this.updatePowerUps();
+                
+                // Spawn objects
+                this.spawnObstacle();
+                this.spawnPowerUp();
+                
+                // Update objects
+                this.updateObstacles(speedMultiplier * timeMultiplier);
+                this.updatePowerUpObjects(speedMultiplier * timeMultiplier);
+                this.updateParticles();
+                
+                // Check collisions
+                this.checkCollisions();
+                
+                // Update score
+                this.score += Math.floor(this.gameSpeed * speedMultiplier);
+                document.getElementById('score').textContent = this.score;
+                
+                // Increase difficulty
+                this.gameSpeed += 0.001;
+            }
+
+            updatePlayer(deltaTime) {
+                // Gravity
+                if (!this.player.onGround) {
+                    this.player.velocityY += 0.8;
+                }
+                
+                // Update position
+                this.player.y += this.player.velocityY;
+                
+                // Ground collision
+                const groundY = this.canvas.height - 100;
+                if (this.player.y >= groundY) {
+                    this.player.y = groundY;
+                    this.player.velocityY = 0;
+                    this.player.onGround = true;
+                }
+            }
+
+            updatePowerUps() {
+                if (this.player.shieldTime > 0) {
+                    this.player.shieldTime--;
+                    if (this.player.shieldTime <= 0) {
+                        this.player.shield = false;
+                    }
+                }
+                
+                if (this.player.speedBoostTime > 0) {
+                    this.player.speedBoostTime--;
+                    if (this.player.speedBoostTime <= 0) {
+                        this.player.speedBoost = false;
+                    }
+                }
+                
+                if (this.player.timeSlowTime > 0) {
+                    this.player.timeSlowTime--;
+                    if (this.player.timeSlowTime <= 0) {
+                        this.player.timeSlow = false;
+                    }
+                }
+                
+                this.updatePowerUpUI();
+            }
+
+            updatePowerUpUI() {
+                const indicator = document.getElementById('powerUpIndicator');
+                let text = '';
+                
+                if (this.player.shield) {
+                    text += `🛡️ Shield: ${Math.ceil(this.player.shieldTime / 60)}s `;
+                }
+                if (this.player.speedBoost) {
+                    text += `⚡ Boost: ${Math.ceil(this.player.speedBoostTime / 60)}s `;
+                }
+                if (this.player.timeSlow) {
+                    text += `⏰ Slow: ${Math.ceil(this.player.timeSlowTime / 60)}s `;
+                }
+                
+                if (text) {
+                    indicator.textContent = text;
+                    indicator.style.display = 'block';
+                } else {
+                    indicator.style.display = 'none';
+                }
+            }
+
+            updateObstacles(speedMultiplier) {
+                this.obstacles = this.obstacles.filter(obstacle => {
+                    obstacle.x -= this.gameSpeed * speedMultiplier;
+                    return obstacle.x + obstacle.width > 0;
+                });
+            }
+
+            updatePowerUpObjects(speedMultiplier) {
+                this.powerUps = this.powerUps.filter(powerUp => {
+                    powerUp.x -= this.gameSpeed * speedMultiplier;
+                    powerUp.bounce += 0.2;
+                    powerUp.y += Math.sin(powerUp.bounce) * 2;
+                    return powerUp.x + powerUp.width > 0;
+                });
+            }
+
+            updateParticles() {
+                this.particles = this.particles.filter(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vy += 0.3; // Gravity
+                    particle.life--;
+                    return particle.life > 0;
+                });
+            }
+
+            checkCollisions() {
+                // Obstacle collisions
+                for (let obstacle of this.obstacles) {
+                    if (this.isColliding(this.player, obstacle)) {
+                        if (this.player.shield) {
+                            // Destroy obstacle if shielded
+                            this.obstacles.splice(this.obstacles.indexOf(obstacle), 1);
+                            this.createParticles(obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, '#00BFFF', 10);
+                            this.score += 50;
+                        } else {
+                            this.gameOver();
+                        }
+                    }
+                }
+                
+                // Power-up collisions
+                for (let powerUp of this.powerUps) {
+                    if (this.isColliding(this.player, powerUp)) {
+                        this.collectPowerUp(powerUp);
+                        this.powerUps.splice(this.powerUps.indexOf(powerUp), 1);
+                    }
+                }
+            }
+
+            isColliding(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+
+            collectPowerUp(powerUp) {
+                this.createParticles(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.color, 8);
+                
+                switch (powerUp.type) {
+                    case 'coin':
+                        this.score += 100;
+                        break;
+                    case 'star':
+                        this.score += 500;
+                        this.player.speedBoost = true;
+                        this.player.speedBoostTime = 180;
+                        break;
+                    case 'heart':
+                        this.player.shield = true;
+                        this.player.shieldTime = 300;
+                        break;
+                }
+            }
+
+            render() {
+                // Clear canvas with gradient background
+                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                gradient.addColorStop(0, '#87CEEB');
+                gradient.addColorStop(0.5, '#98FB98');
+                gradient.addColorStop(1, '#90EE90');
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw ground
+                this.ctx.fillStyle = '#8FBC8F';
+                this.ctx.fillRect(0, this.canvas.height - 50, this.canvas.width, 50);
+                
+                // Draw player
+                this.renderPlayer();
+                
+                // Draw obstacles
+                this.renderObstacles();
+                
+                // Draw power-ups
+                this.renderPowerUps();
+                
+                // Draw particles
+                this.renderParticles();
+            }
+
+            renderPlayer() {
+                this.ctx.save();
+                
+                // Shield effect
+                if (this.player.shield) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 
+                               this.player.width/2 + 10, 0, Math.PI * 2);
+                    this.ctx.strokeStyle = '#00BFFF';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.stroke();
+                }
+                
+                // Player body
+                this.ctx.fillStyle = this.player.speedBoost ? '#FF4500' : '#4169E1';
+                this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+                
+                // Player face
+                this.ctx.fillStyle = 'white';
+                this.ctx.fillRect(this.player.x + 10, this.player.y + 8, 8, 8);
+                this.ctx.fillRect(this.player.x + 22, this.player.y + 8, 8, 8);
+                
+                this.ctx.fillStyle = 'black';
+                this.ctx.fillRect(this.player.x + 15, this.player.y + 20, 10, 4);
+                
+                this.ctx.restore();
+            }
+
+            renderObstacles() {
+                for (let obstacle of this.obstacles) {
+                    this.ctx.fillStyle = obstacle.color;
+                    
+                    if (obstacle.type === 'spike') {
+                        // Draw triangle spike
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(obstacle.x + obstacle.width/2, obstacle.y);
+                        this.ctx.lineTo(obstacle.x, obstacle.y + obstacle.height);
+                        this.ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                    } else if (obstacle.type === 'enemy') {
+                        // Draw enemy with movement
+                        const bounce = Math.sin(Date.now() / 200) * 5;
+                        this.ctx.fillRect(obstacle.x, obstacle.y + bounce, obstacle.width, obstacle.height);
+                        
+                        // Enemy eyes
+                        this.ctx.fillStyle = 'white';
+                        this.ctx.fillRect(obstacle.x + 5, obstacle.y + 5 + bounce, 6, 6);
+                        this.ctx.fillRect(obstacle.x + 19, obstacle.y + 5 + bounce, 6, 6);
+                        this.ctx.fillStyle = 'red';
+                        this.ctx.fillRect(obstacle.x + 7, obstacle.y + 7 + bounce, 2, 2);
+                        this.ctx.fillRect(obstacle.x + 21, obstacle.y + 7 + bounce, 2, 2);
+                    } else {
+                        this.ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    }
+                }
+            }
+
+            renderPowerUps() {
+                for (let powerUp of this.powerUps) {
+                    this.ctx.save();
+                    this.ctx.translate(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
+                    this.ctx.rotate(Date.now() / 500);
+                    this.ctx.fillStyle = powerUp.color;
+                    
+                    if (powerUp.type === 'coin') {
+                        // Draw coin
+                        this.ctx.beginPath();
+                        this.ctx.arc(0, 0, powerUp.width/2, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.fillStyle = '#FFA500';
+                        this.ctx.beginPath();
+                        this.ctx.arc(0, 0, powerUp.width/3, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    } else if (powerUp.type === 'star') {
+                        // Draw star
+                        this.drawStar(0, 0, 5, powerUp.width/2, powerUp.width/4);
+                    } else {
+                        // Draw heart
+                        this.drawHeart(0, 0, powerUp.width/2);
+                    }
+                    
+                    this.ctx.restore();
+                }
+            }
+
+            drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+                let rot = Math.PI / 2 * 3;
+                let x = cx;
+                let y = cy;
+                const step = Math.PI / spikes;
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(cx, cy - outerRadius);
+                
+                for (let i = 0; i < spikes; i++) {
+                    x = cx + Math.cos(rot) * outerRadius;
+                    y = cy + Math.sin(rot) * outerRadius;
+                    this.ctx.lineTo(x, y);
+                    rot += step;
+
+                    x = cx + Math.cos(rot) * innerRadius;
+                    y = cy + Math.sin(rot) * innerRadius;
+                    this.ctx.lineTo(x, y);
+                    rot += step;
+                }
+                
+                this.ctx.lineTo(cx, cy - outerRadius);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+
+            drawHeart(cx, cy, size) {
+                this.ctx.beginPath();
+                const topCurveHeight = size * 0.3;
+                this.ctx.moveTo(cx, cy + topCurveHeight);
+                
+                // Left side of heart
+                this.ctx.bezierCurveTo(
+                    cx, cy, 
+                    cx - size / 2, cy, 
+                    cx - size / 2, cy + topCurveHeight
+                );
+                this.ctx.bezierCurveTo(
+                    cx - size / 2, cy + (size + topCurveHeight) / 2, 
+                    cx, cy + (size + topCurveHeight) / 2, 
+                    cx, cy + size
+                );
+                
+                // Right side of heart
+                this.ctx.bezierCurveTo(
+                    cx, cy + (size + topCurveHeight) / 2, 
+                    cx + size / 2, cy + (size + topCurveHeight) / 2, 
+                    cx + size / 2, cy + topCurveHeight
+                );
+                this.ctx.bezierCurveTo(
+                    cx + size / 2, cy, 
+                    cx, cy, 
+                    cx, cy + topCurveHeight
+                );
+                
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+
+            renderParticles() {
+                for (let particle of this.particles) {
+                    const alpha = particle.life / particle.maxLife;
+                    this.ctx.save();
+                    this.ctx.globalAlpha = alpha;
+                    this.ctx.fillStyle = particle.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+            }
+
+            gameOver() {
+                this.gameState = 'gameOver';
+                
+                // Create game over screen
+                const gameOverDiv = document.createElement('div');
+                gameOverDiv.className = 'game-over';
+                gameOverDiv.innerHTML = `
+                    <h2>🎮 GAME OVER 🎮</h2>
+                    <p>Final Score: <strong>${this.score}</strong></p>
+                    <p>You survived ${Math.floor(this.score / 100)} seconds!</p>
+                    <br>
+                    <button class="start-btn" onclick="location.reload()">🔄 PLAY AGAIN</button>
+                    <div style="margin-top: 20px; font-size: 14px;">
+                        <p>🏆 High Score Challenges:</p>
+                        <p>${this.score > 5000 ? '✅' : '❌'} Score over 5,000</p>
+                        <p>${this.score > 10000 ? '✅' : '❌'} Score over 10,000</p>
+                        <p>${this.score > 20000 ? '✅' : '❌'} Master Level: 20,000+</p>
+                    </div>
+                `;
+                
+                document.querySelector('.game-container').appendChild(gameOverDiv);
+                
+                // Create final explosion effect
+                this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, '#FF4500', 30);
+            }
+
+            gameLoop(currentTime = 0) {
+                if (this.gameState === 'gameOver') return;
+                
+                const deltaTime = currentTime - this.lastTime;
+                this.lastTime = currentTime;
+                
+                // Analyze audio
+                this.analyzeAudio();
+                
+                // Update game logic
+                this.updateGame(deltaTime);
+                
+                // Render everything
+                this.render();
+                
+                // Continue loop
+                requestAnimationFrame((time) => this.gameLoop(time));
+            }
+        }
+
+        // Enhanced Audio Processing Utilities
+        class AudioProcessor {
+            static detectClap(frequencyData, volumeHistory) {
+                // Clap detection using frequency analysis and volume spike
+                const highFreqEnergy = AudioProcessor.getFrequencyBandEnergy(frequencyData, 2000, 8000);
+                const midFreqEnergy = AudioProcessor.getFrequencyBandEnergy(frequencyData, 500, 2000);
+                const volumeSpike = AudioProcessor.getVolumeSpike(volumeHistory);
+                
+                return highFreqEnergy > 40 && volumeSpike > 30 && highFreqEnergy > midFreqEnergy * 1.5;
+            }
+            
+            static detectYell(frequencyData, volumeHistory) {
+                // Yell detection using broad spectrum energy and sustained volume
+                const totalEnergy = frequencyData.reduce((sum, val) => sum + val, 0) / frequencyData.length;
+                const currentVolume = volumeHistory[volumeHistory.length - 1] || 0;
+                
+                return totalEnergy > 35 && currentVolume > 60;
+            }
+            
+            static detectWhistle(frequencyData) {
+                // Whistle detection using narrow high-frequency peak
+                const whistleRange = AudioProcessor.getFrequencyBandEnergy(frequencyData, 1000, 4000);
+                const belowWhistle = AudioProcessor.getFrequencyBandEnergy(frequencyData, 100, 1000);
+                const aboveWhistle = AudioProcessor.getFrequencyBandEnergy(frequencyData, 4000, 8000);
+                
+                return whistleRange > 50 && whistleRange > belowWhistle * 2 && whistleRange > aboveWhistle * 2;
+            }
+            
+            static getFrequencyBandEnergy(frequencyData, startHz, endHz, sampleRate = 44100) {
+                const nyquist = sampleRate / 2;
+                const startBin = Math.floor((startHz / nyquist) * frequencyData.length);
+                const endBin = Math.floor((endHz / nyquist) * frequencyData.length);
+                
+                let sum = 0;
+                for (let i = startBin; i < Math.min(endBin, frequencyData.length); i++) {
+                    sum += frequencyData[i];
+                }
+                return sum / (endBin - startBin);
+            }
+            
+            static getVolumeSpike(volumeHistory) {
+                if (volumeHistory.length < 3) return 0;
+                const current = volumeHistory[volumeHistory.length - 1];
+                const average = volumeHistory.slice(0, -1).reduce((a, b) => a + b, 0) / (volumeHistory.length - 1);
+                return current - average;
+            }
+        }
+
+        // Performance Monitor
+        class PerformanceMonitor {
+            constructor() {
+                this.frameCount = 0;
+                this.lastFPSUpdate = 0;
+                this.fps = 0;
+            }
+            
+            update(currentTime) {
+                this.frameCount++;
+                
+                if (currentTime - this.lastFPSUpdate >= 1000) {
+                    this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastFPSUpdate));
+                    this.frameCount = 0;
+                    this.lastFPSUpdate = currentTime;
+                    
+                    // Display FPS in console for debugging
+                    if (this.fps < 45) {
+                        console.warn(`Low FPS detected: ${this.fps}`);
+                    }
+                }
+            }
+            
+            getFPS() {
+                return this.fps;
+            }
+        }
+
+        // Sound Effect Generator
+        class SoundEffectGenerator {
+            constructor(audioContext) {
+                this.audioContext = audioContext;
+            }
+            
+            playJumpSound() {
+                if (!this.audioContext) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+                
+                oscillator.start();
+                oscillator.stop(this.audioContext.currentTime + 0.2);
+            }
+            
+            playPowerUpSound() {
+                if (!this.audioContext) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(600, this.audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1200, this.audioContext.currentTime + 0.15);
+                
+                gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+                
+                oscillator.start();
+                oscillator.stop(this.audioContext.currentTime + 0.3);
+            }
+        }
+
+        // Initialize game
+        let game;
+        let performanceMonitor;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            game = new SoundGameEngine();
+            performanceMonitor = new PerformanceMonitor();
+            
+            // Add keyboard shortcuts for testing
+            document.addEventListener('keydown', (event) => {
+                if (game.gameState === 'playing') {
+                    switch(event.key) {
+                        case ' ': // Spacebar for jump testing
+                            event.preventDefault();
+                            game.handleYell();
+                            break;
+                        case 'c': // C for clap testing
+                            event.preventDefault();
+                            game.handleClap();
+                            break;
+                        case 'w': // W for whistle testing
+                            event.preventDefault();
+                            game.handleWhistle();
+                            break;
+                        case 'b': // B for boost testing
+                            event.preventDefault();
+                            game.handleSpeedBoost();
+                            break;
+                    }
+                }
+            });
+            
+            // Add touch support for mobile
+            let touchStartY = 0;
+            document.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+            });
+            
+            document.addEventListener('touchend', (e) => {
+                const touchEndY = e.changedTouches[0].clientY;
+                const diff = touchStartY - touchEndY;
+                
+                if (Math.abs(diff) > 50 && game.gameState === 'playing') {
+                    if (diff > 0) {
+                        game.handleYell(); // Swipe up = jump
+                    } else {
+                        game.handleClap(); // Swipe down = shield
+                    }
+                }
+            });
+            
+            // Prevent context menu on right click
+            document.addEventListener('contextmenu', e => e.preventDefault());
+        });
+
+        // Easter eggs and advanced features
+        let konamiCode = [];
+        const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
+        
+        document.addEventListener('keydown', (e) => {
+            konamiCode.push(e.code);
+            if (konamiCode.length > konamiSequence.length) {
+                konamiCode.shift();
+            }
+            
+            if (JSON.stringify(konamiCode) === JSON.stringify(konamiSequence)) {
+                // Activate god mode
+                if (game && game.gameState === 'playing') {
+                    game.player.shield = true;
+                    game.player.shieldTime = 1800; // 30 seconds
+                    game.player.speedBoost = true;
+                    game.player.speedBoostTime = 1800;
+                    game.showAudioFeedback('GOD MODE! 🚀✨🛡️');
+                    
+                    // Visual celebration
+                    for (let i = 0; i < 50; i++) {
+                        setTimeout(() => {
+                            game.createParticles(
+                                Math.random() * game.canvas.width,
+                                Math.random() * game.canvas.height,
+                                `hsl(${Math.random() * 360}, 100%, 50%)`,
+                                5
+                            );
+                        }, i * 50);
+                    }
+                }
+                konamiCode = [];
+            }
+        });
+    </script>
+</body>
+</html>
