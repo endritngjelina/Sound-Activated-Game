@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound-Activated Adventure Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+            animation: backgroundShift 10s ease-in-out infinite alternate;
+        }
+
+        @keyframes backgroundShift {
+            0% { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+            100% { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); }
+        }
+
+        .header {
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .header:hover {
+            backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        .title {
+            color: white;
+            font-size: 2.8rem;
+            font-weight: 900;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 3s ease-in-out infinite;
+            letter-spacing: 2px;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .controls-info {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            font-weight: 500;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
+            50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+        }
+
+        .game-container {
+            position: relative;
+            width: 1000px;
+            height: 600px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 60%, #90EE90 100%);
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .game-container:hover {
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="1" fill="white" opacity="0.1"/><circle cx="80" cy="40" r="1.5" fill="white" opacity="0.1"/><circle cx="40" cy="80" r="1" fill="white" opacity="0.1"/><circle cx="90" cy="80" r="1" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="1.5" fill="white" opacity="0.1"/></svg>');
+            pointer-events: none;
+            animation: floatingElements 20s linear infinite;
+        }
+
+        @keyframes floatingElements {
+            from { transform: translateX(-10px); }
+            to { transform: translateX(10px); }
+        }
+
+        .player {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            border-radius: 50%;
+            bottom: 100px;
+            left: 50px;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 
+                0 8px 16px rgba(0, 0, 0, 0.2),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3);
+            border: 3px solid white;
+            animation: playerIdle 2s ease-in-out infinite;
+        }
+
+        @keyframes playerIdle {
+            0%, 100% { 
+                transform: scale(1) rotate(0deg);
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+            }
+            50% { 
+                transform: scale(1.05) rotate(1deg);
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25), 0 4px 8px rgba(0, 0, 0, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.4);
+            }
+        }
+
+        .player.jumping {
+            transform: translateY(-80px) scale(1.2) rotate(360deg);
+            box-shadow: 
+                0 15px 30px rgba(0, 0, 0, 0.3),
+                0 0 20px rgba(78, 205, 196, 0.6);
+            animation: none;
+        }
+
+        .player.dashing {
+            box-shadow: 
+                0 8px 16px rgba(0, 0, 0, 0.2),
+                0 0 25px rgba(255, 107, 107, 0.8);
+            animation: dashGlow 0.3s ease-out;
+        }
+
+        @keyframes dashGlow {
+            0% { box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2), 0 0 25px rgba(255, 107, 107, 0.8); }
+            50% { box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2), 0 0 40px rgba(255, 107, 107, 1); }
+            100% { box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2), 0 0 25px rgba(255, 107, 107, 0.8); }
+        }
+
+        .obstacle {
+            position: absolute;
+            width: 30px;
+            height: 50px;
+            background: linear-gradient(45deg, #ff4757, #2f3542);
+            bottom: 100px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .collectible {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: radial-gradient(circle, #ffd700, #ffed4e);
+            border-radius: 50%;
+            bottom: 120px;
+            animation: float 2s ease-in-out infinite;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+            border: 2px solid #fff;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .enemy {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            background: radial-gradient(circle, #e74c3c, #c0392b);
+            border-radius: 40% 60% 70% 30%;
+            bottom: 105px;
+            animation: wiggle 1.5s ease-in-out infinite;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(-3deg); }
+            50% { transform: rotate(3deg); }
+        }
+
+        .power-up {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: conic-gradient(from 0deg, #ff006e, #8338ec, #3a86ff, #06ffa5, #ffbe0b, #ff006e);
+            border-radius: 50%;
+            bottom: 115px;
+            animation: spin 3s linear infinite;
+            box-shadow: 0 0 20px rgba(131, 56, 236, 0.8);
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.25);
+            padding: 15px 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .hud:hover {
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(15px);
+            transform: translateY(-2px);
+        }
+
+        .hud div {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hud div::before {
+            content: attr(data-icon);
+            font-size: 1.1em;
+            width: 20px;
+            text-align: center;
+        }
+
+        .score-value {
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            font-weight: 900;
+        }
+
+        .lives-value {
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+
+        .combo-value {
+            color: #4ecdc4;
+            text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+        }
+
+        .level-value {
+            color: #8338ec;
+            text-shadow: 0 0 10px rgba(131, 56, 236, 0.5);
+        }
+
+        .audio-visualizer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 220px;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 15px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .audio-visualizer:hover {
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(15px);
+            transform: translateY(-2px);
+        }
+
+        .audio-visualizer .title {
+            color: white;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .visualizer-container {
+            display: flex;
+            align-items: end;
+            justify-content: center;
+            height: 60px;
+            gap: 1px;
+        }
+
+        .frequency-bar {
+            display: inline-block;
+            width: 4px;
+            height: 5px;
+            background: linear-gradient(to top, #00ff88, #00ccff, #ff00ff);
+            margin: 0 0.5px;
+            border-radius: 2px 2px 0 0;
+            transition: height 0.1s ease;
+            box-shadow: 0 0 3px rgba(0, 255, 136, 0.3);
+            animation: barGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes barGlow {
+            0% { box-shadow: 0 0 3px rgba(0, 255, 136, 0.3); }
+            100% { box-shadow: 0 0 8px rgba(0, 255, 136, 0.6); }
+        }
+
+        .frequency-bar.active {
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.8);
+            transform: scaleY(1.1);
+        }
+
+        .sound-commands {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 0.95rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            min-width: 280px;
+        }
+
+        .sound-commands:hover {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(15px);
+            transform: translateY(-3px);
+        }
+
+        .sound-commands div {
+            margin: 8px 0;
+            padding: 5px 0;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sound-commands div:hover {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 10px;
+            transform: translateX(5px);
+        }
+
+        .command-icon {
+            font-size: 1.2em;
+            width: 25px;
+            text-align: center;
+        }
+
+        .command-text {
+            flex: 1;
+        }
+
+        .command-action {
+            color: #4ecdc4;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(78, 205, 196, 0.5);
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 50px;
+            border-radius: 20px;
+            text-align: center;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            display: none;
+            min-width: 350px;
+            animation: gameOverSlide 0.5s ease-out;
+        }
+
+        @keyframes gameOverSlide {
+            0% {
+                transform: translate(-50%, -60%) scale(0.8);
+                opacity: 0;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .game-over h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+        }
+
+        .game-over p {
+            font-size: 1.3rem;
+            margin: 15px 0;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .start-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 20px;
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.3),
+                inset 0 2px 4px rgba(255, 255, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .start-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .start-button:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 
+                0 12px 35px rgba(0, 0, 0, 0.4),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+
+        .start-button:hover::before {
+            left: 100%;
+        }
+
+        .start-button:active {
+            transform: translateY(-1px) scale(1.02);
+            box-shadow: 
+                0 6px 15px rgba(0, 0, 0, 0.3),
+                inset 0 2px 4px rgba(255, 255, 255, 0.2);
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #fff;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle-float 1s ease-out forwards;
+        }
+
+        @keyframes particle-float {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0) translateY(-50px);
+            }
+        }
+
+        .combo-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            animation: combo-pop 1s ease-out;
+        }
+
+        @keyframes combo-pop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+        .combo-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 
+                2px 2px 4px rgba(0, 0, 0, 0.7),
+                0 0 20px rgba(255, 215, 0, 0.8);
+            opacity: 0;
+            animation: combo-pop 1.2s ease-out;
+            z-index: 1000;
+            background: linear-gradient(45deg, #ffd700, #ffed4e, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        @keyframes combo-pop {
+            0% { 
+                opacity: 0; 
+                transform: translate(-50%, -50%) scale(0.5) rotate(-10deg); 
+            }
+            30% { 
+                opacity: 1; 
+                transform: translate(-50%, -50%) scale(1.3) rotate(5deg); 
+            }
+            70% { 
+                opacity: 1; 
+                transform: translate(-50%, -50%) scale(1.1) rotate(-2deg); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: translate(-50%, -50%) scale(1) rotate(0deg); 
+            }
+        }
+
+        /* Status effects */
+        .slow-motion-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle, rgba(131, 56, 236, 0.2) 0%, transparent 70%);
+            pointer-events: none;
+            animation: slowMotionPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes slowMotionPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Loading animation */
+        .loading-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            text-align: center;
+            z-index: 10000;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #4ecdc4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive enhancements */
+        @media (max-width: 1100px) {
+            .game-container {
+                width: 90vw;
+                max-width: 800px;
+            }
+            
+            .title {
+                font-size: 2.2rem;
+            }
+            
+            .controls-info {
+                font-size: 1rem;
+                padding: 12px 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hud {
+                font-size: 1rem;
+                padding: 10px 15px;
+            }
+            
+            .audio-visualizer {
+                width: 180px;
+                height: 80px;
+                padding: 10px;
+            }
+
+            .title {
+                font-size: 1.8rem;
+            }
+
+            .controls-info {
+                font-size: 0.9rem;
+                padding: 10px 16px;
+            }
+
+            .combo-indicator {
+                font-size: 2rem;
+            }
+
+            .loading-indicator {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hud {
+                font-size: 0.9rem;
+                padding: 8px 12px;
+            }
+
+            .audio-visualizer {
+                width: 150px;
+                height: 70px;
+                padding: 8px;
+            }
+
+            .title {
+                font-size: 1.5rem;
+            }
+
+            .controls-info {
+                font-size: 0.85rem;
+                padding: 8px 12px;
+            }
+
+            .combo-indicator {
+                font-size: 1.8rem;
+            }
+
+            .loading-indicator {
+                padding: 16px;
+            }
+        }
+
+            
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">🎮 Sound-Activated Adventure 🔊</div>
+        <div class="controls-info">
+            Control the game with your voice and sounds! Yell to jump, clap to dash, whistle to slow time!
+        </div>
+        <button class="start-button" id="startBtn">🎤 Start Game</button>
+    </div>
+
+    <div class="game-container" id="gameContainer" style="display: none;">
+        <div class="player" id="player"></div>
+        
+        <div class="hud">
+            <div data-icon="🏆">Score: <span id="score" class="score-value">0</span></div>
+            <div data-icon="❤️">Lives: <span id="lives" class="lives-value">3</span></div>
+            <div data-icon="⚡">Combo: <span id="combo" class="combo-value">0</span></div>
+            <div data-icon="🎯">Level: <span id="level" class="level-value">1</span></div>
+        </div>
+
+        <div class="audio-visualizer" id="visualizer">
+            <div class="title">🔊 Audio Input</div>
+            <div class="visualizer-container" id="frequencyBars"></div>
+        </div>
+
+        <div class="sound-commands">
+            <div>
+                <span class="command-icon">🗣️</span>
+                <span class="command-text"><strong>YELL/SHOUT:</strong></span>
+                <span class="command-action">Jump over obstacles</span>
+            </div>
+            <div>
+                <span class="command-icon">👏</span>
+                <span class="command-text"><strong>CLAP:</strong></span>
+                <span class="command-action">Dash forward quickly</span>
+            </div>
+            <div>
+                <span class="command-icon">🎵</span>
+                <span class="command-text"><strong>WHISTLE:</strong></span>
+                <span class="command-action">Activate slow motion</span>
+            </div>
+            <div>
+                <span class="command-icon">🔇</span>
+                <span class="command-text"><strong>SILENCE:</strong></span>
+                <span class="command-action">Move backward</span>
+            </div>
+        </div>
+
+        <div class="game-over" id="gameOver">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <button class="start-button" onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        class SoundActivatedGame {
+            constructor() {
+                this.audioContext = null;
+                this.analyser = null;
+                this.microphone = null;
+                this.dataArray = null;
+                this.isRunning = false;
+                
+                // Game state
+                this.score = 0;
+                this.lives = 3;
+                this.combo = 0;
+                this.level = 1;
+                this.player = { x: 50, y: 100, isJumping: false, isDashing: false };
+                this.gameObjects = [];
+                this.particles = [];
+                
+                // Audio analysis
+                this.volumeThreshold = 30;
+                this.frequencyData = [];
+                this.lastSoundTime = 0;
+                this.soundCooldown = 300;
+                this.isSlowMotion = false;
+                this.slowMotionDuration = 0;
+                
+                // Game timing
+                this.lastSpawnTime = 0;
+                this.spawnInterval = 2000;
+                this.gameSpeed = 1;
+                
+                this.init();
+            }
+
+            async init() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.setupAudioAnalysis();
+                    this.setupEventListeners();
+                    this.createFrequencyBars();
+                } catch (error) {
+                    console.error('Audio initialization failed:', error);
+                    alert('Microphone access is required for this game to work!');
+                }
+            }
+
+            async setupAudioAnalysis() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: { 
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        } 
+                    });
+                    
+                    this.microphone = this.audioContext.createMediaStreamSource(stream);
+                    this.analyser = this.audioContext.createAnalyser();
+                    
+                    this.analyser.fftSize = 512;
+                    this.analyser.smoothingTimeConstant = 0.8;
+                    
+                    const bufferLength = this.analyser.frequencyBinCount;
+                    this.dataArray = new Uint8Array(bufferLength);
+                    
+                    this.microphone.connect(this.analyser);
+                    
+                } catch (error) {
+                    console.error('Microphone setup failed:', error);
+                    throw error;
+                }
+            }
+
+            createFrequencyBars() {
+                const barsContainer = document.getElementById('frequencyBars');
+                barsContainer.innerHTML = '';
+                
+                for (let i = 0; i < 40; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'frequency-bar';
+                    barsContainer.appendChild(bar);
+                }
+            }
+
+            setupEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => {
+                    this.startGame();
+                });
+                
+                window.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.jump();
+                    }
+                });
+            }
+
+            startGame() {
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('gameContainer').style.display = 'block';
+                
+                this.resetGame();
+                this.isRunning = true;
+                this.gameLoop();
+            }
+
+            resetGame() {
+                this.score = 0;
+                this.lives = 3;
+                this.combo = 0;
+                this.level = 1;
+                this.player = { x: 50, y: 100, isJumping: false, isDashing: false };
+                this.gameObjects = [];
+                this.particles = [];
+                this.isSlowMotion = false;
+                this.slowMotionDuration = 0;
+                this.gameSpeed = 1;
+                this.lastSpawnTime = 0;
+                
+                this.updateHUD();
+                document.getElementById('gameOver').style.display = 'none';
+            }
+
+            gameLoop() {
+                if (!this.isRunning) return;
+                
+                this.analyzeAudio();
+                this.updatePlayer();
+                this.updateGameObjects();
+                this.updateParticles();
+                this.checkCollisions();
+                this.spawnObjects();
+                this.updateSlowMotion();
+                this.updateVisualizer();
+                
+                requestAnimationFrame(() => this.gameLoop());
+            }
+
+            analyzeAudio() {
+                if (!this.analyser) return;
+                
+                this.analyser.getByteFrequencyData(this.dataArray);
+                
+                // Calculate overall volume
+                const volume = this.dataArray.reduce((sum, value) => sum + value, 0) / this.dataArray.length;
+                
+                // Detect different sound patterns
+                const now = Date.now();
+                if (now - this.lastSoundTime < this.soundCooldown) return;
+                
+                // High-frequency detection (whistle)
+                const highFreqStart = Math.floor(this.dataArray.length * 0.7);
+                const highFreqVolume = this.dataArray.slice(highFreqStart).reduce((sum, val) => sum + val, 0) / (this.dataArray.length - highFreqStart);
+                
+                // Sharp attack detection (clap)
+                const sharpAttack = this.detectSharpAttack();
+                
+                // Loud volume detection (yell/shout)
+                const isLoudSound = volume > this.volumeThreshold + 40;
+                
+                // Execute actions based on sound analysis
+                if (highFreqVolume > 60 && volume > 25) {
+                    this.activateSlowMotion();
+                    this.lastSoundTime = now;
+                } else if (sharpAttack) {
+                    this.dash();
+                    this.lastSoundTime = now;
+                } else if (isLoudSound) {
+                    this.jump();
+                    this.lastSoundTime = now;
+                } else if (volume < 10) {
+                    this.moveBackward();
+                }
+            }
+
+            detectSharpAttack() {
+                if (this.previousVolume === undefined) {
+                    this.previousVolume = 0;
+                    return false;
+                }
+                
+                const currentVolume = this.dataArray.reduce((sum, value) => sum + value, 0) / this.dataArray.length;
+                const volumeIncrease = currentVolume - this.previousVolume;
+                this.previousVolume = currentVolume;
+                
+                return volumeIncrease > 30 && currentVolume > 40;
+            }
+
+            jump() {
+                if (this.player.isJumping) return;
+                
+                this.player.isJumping = true;
+                document.getElementById('player').classList.add('jumping');
+                
+                this.createParticles(this.player.x + 20, this.player.y + 20, '#4ecdc4');
+                
+                setTimeout(() => {
+                    this.player.isJumping = false;
+                    document.getElementById('player').classList.remove('jumping');
+                }, 600);
+            }
+
+            dash() {
+                if (this.player.isDashing) return;
+                
+                this.player.isDashing = true;
+                this.player.x = Math.min(this.player.x + 100, 950);
+                
+                // Add dashing visual effect
+                document.getElementById('player').classList.add('dashing');
+                
+                this.createParticles(this.player.x, this.player.y + 20, '#ff6b6b');
+                this.updatePlayerPosition();
+                
+                setTimeout(() => {
+                    this.player.isDashing = false;
+                    document.getElementById('player').classList.remove('dashing');
+                }, 300);
+            }
+
+            moveBackward() {
+                this.player.x = Math.max(this.player.x - 1 * this.gameSpeed, 10);
+                this.updatePlayerPosition();
+            }
+
+            activateSlowMotion() {
+                if (this.isSlowMotion) return;
+                
+                this.isSlowMotion = true;
+                this.slowMotionDuration = 2000;
+                this.gameSpeed = 0.3;
+                
+                this.createParticles(this.player.x + 20, this.player.y + 20, '#8338ec');
+                
+                // Enhanced visual effects for slow motion
+                const slowEffect = document.createElement('div');
+                slowEffect.className = 'slow-motion-effect';
+                document.getElementById('gameContainer').appendChild(slowEffect);
+                
+                document.body.style.filter = 'hue-rotate(180deg) saturate(1.5) contrast(1.2)';
+                
+                setTimeout(() => {
+                    if (slowEffect.parentNode) {
+                        slowEffect.parentNode.removeChild(slowEffect);
+                    }
+                }, 2000);
+            }
+
+            updateSlowMotion() {
+                if (this.isSlowMotion) {
+                    this.slowMotionDuration -= 16;
+                    if (this.slowMotionDuration <= 0) {
+                        this.isSlowMotion = false;
+                        this.gameSpeed = 1;
+                        document.body.style.filter = '';
+                    }
+                }
+            }
+
+            createParticles(x, y, color) {
+                for (let i = 0; i < 8; i++) {
+                    const particle = {
+                        x: x + (Math.random() - 0.5) * 20,
+                        y: y + (Math.random() - 0.5) * 20,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        life: 1.0,
+                        color: color
+                    };
+                    this.particles.push(particle);
+                    this.createParticleElement(particle);
+                }
+            }
+
+            createParticleElement(particle) {
+                const element = document.createElement('div');
+                element.className = 'particle';
+                element.style.left = particle.x + 'px';
+                element.style.bottom = particle.y + 'px';
+                element.style.background = particle.color;
+                document.getElementById('gameContainer').appendChild(element);
+                
+                particle.element = element;
+                
+                setTimeout(() => {
+                    if (element.parentNode) {
+                        element.parentNode.removeChild(element);
+                    }
+                }, 1000);
+            }
+
+            updateParticles() {
+                this.particles = this.particles.filter(particle => {
+                    particle.life -= 0.02;
+                    if (particle.life <= 0) {
+                        if (particle.element && particle.element.parentNode) {
+                            particle.element.parentNode.removeChild(particle.element);
+                        }
+                        return false;
+                    }
+                    
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vy += 0.1; // gravity
+                    
+                    if (particle.element) {
+                        particle.element.style.left = particle.x + 'px';
+                        particle.element.style.bottom = particle.y + 'px';
+                        particle.element.style.opacity = particle.life;
+                    }
+                    
+                    return true;
+                });
+            }
+
+            spawnObjects() {
+                const now = Date.now();
+                if (now - this.lastSpawnTime < this.spawnInterval / this.gameSpeed) return;
+                
+                this.lastSpawnTime = now;
+                
+                const types = ['obstacle', 'collectible', 'enemy', 'power-up'];
+                const weights = [0.4, 0.3, 0.2, 0.1];
+                const type = this.weightedRandom(types, weights);
+                
+                this.spawnObject(type);
+            }
+
+            weightedRandom(items, weights) {
+                const random = Math.random();
+                let weightSum = 0;
+                
+                for (let i = 0; i < items.length; i++) {
+                    weightSum += weights[i];
+                    if (random <= weightSum) {
+                        return items[i];
+                    }
+                }
+                return items[items.length - 1];
+            }
+
+            spawnObject(type) {
+                const obj = {
+                    type: type,
+                    x: 1000,
+                    y: 100,
+                    speed: 2 + this.level * 0.5,
+                    element: this.createElement(type)
+                };
+                
+                this.gameObjects.push(obj);
+            }
+
+            createElement(type) {
+                const element = document.createElement('div');
+                element.className = type;
+                element.style.left = '1000px';
+                document.getElementById('gameContainer').appendChild(element);
+                return element;
+            }
+
+            updateGameObjects() {
+                this.gameObjects = this.gameObjects.filter(obj => {
+                    obj.x -= obj.speed * this.gameSpeed;
+                    obj.element.style.left = obj.x + 'px';
+                    
+                    if (obj.x < -50) {
+                        obj.element.parentNode.removeChild(obj.element);
+                        return false;
+                    }
+                    
+                    return true;
+                });
+            }
+
+            checkCollisions() {
+                this.gameObjects.forEach((obj, index) => {
+                    const distance = Math.sqrt(
+                        Math.pow(obj.x - this.player.x, 2) + 
+                        Math.pow(obj.y - this.player.y, 2)
+                    );
+                    
+                    if (distance < 30) {
+                        this.handleCollision(obj, index);
+                    }
+                });
+            }
+
+            handleCollision(obj, index) {
+                obj.element.parentNode.removeChild(obj.element);
+                this.gameObjects.splice(index, 1);
+                
+                switch (obj.type) {
+                    case 'collectible':
+                        this.score += 100;
+                        this.combo++;
+                        this.createParticles(obj.x, obj.y, '#ffd700');
+                        break;
+                        
+                    case 'power-up':
+                        this.score += 500;
+                        this.lives++;
+                        this.createParticles(obj.x, obj.y, '#8338ec');
+                        break;
+                        
+                    case 'obstacle':
+                    case 'enemy':
+                        if (!this.player.isJumping) {
+                            this.lives--;
+                            this.combo = 0;
+                            this.createParticles(obj.x, obj.y, '#e74c3c');
+                            
+                            if (this.lives <= 0) {
+                                this.gameOver();
+                            }
+                        }
+                        break;
+                }
+                
+                // Combo bonus
+                if (this.combo > 0 && this.combo % 5 === 0) {
+                    this.showComboBonus();
+                    this.score += this.combo * 50;
+                }
+                
+                // Level progression
+                if (this.score > this.level * 1000) {
+                    this.level++;
+                    this.spawnInterval = Math.max(1000, this.spawnInterval - 100);
+                }
+                
+                this.updateHUD();
+            }
+
+            showComboBonus() {
+                const indicator = document.createElement('div');
+                indicator.className = 'combo-indicator';
+                indicator.textContent = `COMBO x${this.combo}!`;
+                document.getElementById('gameContainer').appendChild(indicator);
+                
+                setTimeout(() => {
+                    if (indicator.parentNode) {
+                        indicator.parentNode.removeChild(indicator);
+                    }
+                }, 1000);
+            }
+
+            updatePlayerPosition() {
+                document.getElementById('player').style.left = this.player.x + 'px';
+            }
+
+            updateHUD() {
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('lives').textContent = this.lives;
+                document.getElementById('combo').textContent = this.combo;
+                document.getElementById('level').textContent = this.level;
+            }
+
+            updateVisualizer() {
+                if (!this.dataArray) return;
+                
+                const bars = document.querySelectorAll('.frequency-bar');
+                const step = Math.floor(this.dataArray.length / bars.length);
+                
+                bars.forEach((bar, i) => {
+                    const value = this.dataArray[i * step];
+                    const height = Math.max(5, (value / 255) * 50);
+                    bar.style.height = height + 'px';
+                    
+                    // Enhanced gradient and glow effects
+                    const intensity = value / 255;
+                    bar.style.background = `linear-gradient(to top, 
+                        hsl(${120 + intensity * 180}, 80%, ${50 + intensity * 30}%),
+                        hsl(${180 + intensity * 180}, 90%, ${60 + intensity * 20}%),
+                        hsl(${240 + intensity * 120}, 95%, ${70 + intensity * 15}%))`;
+                    
+                    // Add active class for high intensity bars
+                    if (intensity > 0.6) {
+                        bar.classList.add('active');
+                    } else {
+                        bar.classList.remove('active');
+                    }
+                    
+                    // Dynamic glow intensity
+                    bar.style.boxShadow = `0 0 ${5 + intensity * 15}px rgba(${Math.floor(intensity * 255)}, 255, ${Math.floor((1 - intensity) * 255)}, ${0.3 + intensity * 0.5})`;
+                });
+            }
+
+            gameOver() {
+                this.isRunning = false;
+                document.getElementById('finalScore').textContent = this.score;
+                document.getElementById('gameOver').style.display = 'block';
+            }
+        }
+
+        // Initialize game
+        let game;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            game = new SoundActivatedGame();
+        });
+
+        function restartGame() {
+            if (game) {
+                game.startGame();
+            }
+        }
+
+        // Handle page visibility for audio context
+        document.addEventListener('visibilitychange', () => {
+            if (game && game.audioContext) {
+                if (document.hidden && game.audioContext.state === 'running') {
+                    game.audioContext.suspend();
+                } else if (!document.hidden && game.audioContext.state === 'suspended') {
+                    game.audioContext.resume();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
