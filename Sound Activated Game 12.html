@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound-Activated Adventure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-canvas {
+            display: block;
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 50%, #8FBC8F 100%);
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 16px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: auto;
+        }
+
+        .score-display {
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .audio-visualizer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 100px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 10px;
+            padding: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .volume-bars {
+            display: flex;
+            align-items: end;
+            height: 80px;
+            gap: 2px;
+        }
+
+        .volume-bar {
+            background: linear-gradient(to top, #ff4444, #ffff44, #44ff44);
+            width: 8px;
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+
+        .controls-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            pointer-events: auto;
+        }
+
+        .control-instruction {
+            color: white;
+            text-align: center;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .start-button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.2s;
+            font-weight: bold;
+        }
+
+        .start-button:hover {
+            transform: scale(1.05);
+        }
+
+        .start-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+        }
+
+        .sound-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .power-up {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffd700, #ff8c00);
+            animation: float 2s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .enemy {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #ff4444, #cc0000);
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        }
+
+        .background-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .cloud {
+            position: absolute;
+            background: rgba(255,255,255,0.7);
+            border-radius: 50px;
+            animation: drift 20s linear infinite;
+        }
+
+        @keyframes drift {
+            from { transform: translateX(-100px); }
+            to { transform: translateX(calc(100vw + 100px)); }
+        }
+
+        .achievement-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,255,0,0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            opacity: 0;
+            transition: all 0.5s ease;
+        }
+
+        .game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.5s ease;
+        }
+
+        .game-over-screen.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas class="game-canvas" id="gameCanvas"></canvas>
+        
+        <div class="background-animation">
+            <div class="cloud" style="top: 10%; width: 80px; height: 40px; animation-delay: 0s;"></div>
+            <div class="cloud" style="top: 20%; width: 120px; height: 60px; animation-delay: 5s;"></div>
+            <div class="cloud" style="top: 5%; width: 100px; height: 50px; animation-delay: 10s;"></div>
+        </div>
+
+        <div class="ui-overlay">
+            <div class="hud">
+                <div class="score-display">
+                    <div>Score: <span id="score">0</span></div>
+                    <div>Level: <span id="level">1</span></div>
+                    <div>Lives: <span id="lives">3</span></div>
+                    <div>Combo: <span id="combo">0</span></div>
+                </div>
+            </div>
+
+            <div class="audio-visualizer">
+                <div class="volume-bars" id="volumeBars"></div>
+            </div>
+
+            <div class="sound-indicator" id="soundIndicator"></div>
+
+            <div class="achievement-popup" id="achievementPopup"></div>
+
+            <div class="controls-panel">
+                <div class="control-instruction">🎤 Yell/Shout to JUMP</div>
+                <div class="control-instruction">👏 Clap to DASH</div>
+                <div class="control-instruction">🎵 Whistle to FLOAT</div>
+                <div class="control-instruction">💨 Blow to SHIELD</div>
+                <button class="start-button" id="startButton">Start Adventure</button>
+                <button class="start-button" id="calibrateButton">Calibrate Audio</button>
+            </div>
+
+            <div class="game-over-screen" id="gameOverScreen">
+                <h2>Game Over!</h2>
+                <p>Final Score: <span id="finalScore">0</span></p>
+                <p>Level Reached: <span id="finalLevel">1</span></p>
+                <button class="start-button" onclick="restartGame()">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SoundActivatedGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.audioContext = null;
+                this.analyser = null;
+                this.microphone = null;
+                this.dataArray = null;
+                
+                // Game state
+                this.gameRunning = false;
+                this.score = 0;
+                this.level = 1;
+                this.lives = 3;
+                this.combo = 0;
+                this.lastComboTime = 0;
+                
+                // Player properties
+                this.player = {
+                    x: 100,
+                    y: 300,
+                    width: 40,
+                    height: 40,
+                    velocityX: 0,
+                    velocityY: 0,
+                    onGround: true,
+                    isFloating: false,
+                    hasShield: false,
+                    shieldTime: 0,
+                    color: '#4ecdc4',
+                    trail: []
+                };
+                
+                // Game objects
+                this.enemies = [];
+                this.powerUps = [];
+                this.particles = [];
+                this.obstacles = [];
+                
+                // Audio analysis
+                this.volumeHistory = [];
+                this.frequencyBands = [];
+                this.audioFeatures = {
+                    volume: 0,
+                    pitch: 0,
+                    clarity: 0,
+                    spectralCentroid: 0
+                };
+                
+                // Sound detection thresholds
+                this.thresholds = {
+                    yell: 0.7,
+                    clap: 0.8,
+                    whistle: 0.6,
+                    blow: 0.4
+                };
+                
+                // Achievements
+                this.achievements = {
+                    firstJump: false,
+                    combo10: false,
+                    level5: false,
+                    perfectDodge: false
+                };
+                
+                this.initializeCanvas();
+                this.setupEventListeners();
+                this.createVolumeVisualizer();
+                this.gameLoop();
+            }
+            
+            initializeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                
+                window.addEventListener('resize', () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                });
+            }
+            
+            setupEventListeners() {
+                document.getElementById('startButton').addEventListener('click', () => this.startGame());
+                document.getElementById('calibrateButton').addEventListener('click', () => this.calibrateAudio());
+            }
+            
+            async startGame() {
+                try {
+                    await this.initializeAudio();
+                    this.gameRunning = true;
+                    this.resetGameState();
+                    document.getElementById('startButton').textContent = 'Game Running...';
+                    document.getElementById('startButton').disabled = true;
+                } catch (error) {
+                    console.error('Failed to start game:', error);
+                    alert('Please allow microphone access to play the game!');
+                }
+            }
+            
+            async initializeAudio() {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+                
+                this.microphone = this.audioContext.createMediaStreamSource(stream);
+                this.analyser = this.audioContext.createAnalyser();
+                
+                this.analyser.fftSize = 2048;
+                this.analyser.smoothingTimeConstant = 0.3;
+                
+                this.microphone.connect(this.analyser);
+                
+                const bufferLength = this.analyser.frequencyBinCount;
+                this.dataArray = new Uint8Array(bufferLength);
+                
+                this.processAudio();
+            }
+            
+            processAudio() {
+                if (!this.gameRunning) return;
+                
+                this.analyser.getByteFrequencyData(this.dataArray);
+                
+                // Calculate volume
+                const sum = this.dataArray.reduce((a, b) => a + b, 0);
+                const volume = sum / (this.dataArray.length * 255);
+                
+                // Advanced audio feature extraction
+                this.audioFeatures.volume = volume;
+                this.audioFeatures.pitch = this.detectPitch();
+                this.audioFeatures.clarity = this.calculateSpectralClarity();
+                this.audioFeatures.spectralCentroid = this.calculateSpectralCentroid();
+                
+                this.volumeHistory.push(volume);
+                if (this.volumeHistory.length > 20) {
+                    this.volumeHistory.shift();
+                }
+                
+                this.detectSoundEvents(volume);
+                this.updateVolumeVisualizer();
+                
+                requestAnimationFrame(() => this.processAudio());
+            }
+            
+            detectPitch() {
+                // Simple pitch detection using autocorrelation
+                const correlations = [];
+                const maxSamples = Math.floor(this.dataArray.length / 2);
+                
+                for (let lag = 1; lag < maxSamples; lag++) {
+                    let correlation = 0;
+                    for (let i = 0; i < maxSamples; i++) {
+                        correlation += this.dataArray[i] * this.dataArray[i + lag];
+                    }
+                    correlations[lag] = correlation;
+                }
+                
+                let maxCorrelation = 0;
+                let bestLag = 0;
+                for (let i = 1; i < correlations.length; i++) {
+                    if (correlations[i] > maxCorrelation) {
+                        maxCorrelation = correlations[i];
+                        bestLag = i;
+                    }
+                }
+                
+                return bestLag > 0 ? this.audioContext.sampleRate / bestLag : 0;
+            }
+            
+            calculateSpectralClarity() {
+                let energy = 0;
+                let peakEnergy = 0;
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const value = this.dataArray[i];
+                    energy += value * value;
+                    if (value > peakEnergy) peakEnergy = value;
+                }
+                
+                return peakEnergy > 0 ? Math.sqrt(energy) / peakEnergy : 0;
+            }
+            
+            calculateSpectralCentroid() {
+                let weightedSum = 0;
+                let magnitudeSum = 0;
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const magnitude = this.dataArray[i];
+                    const frequency = i * this.audioContext.sampleRate / (2 * this.dataArray.length);
+                    weightedSum += frequency * magnitude;
+                    magnitudeSum += magnitude;
+                }
+                
+                return magnitudeSum > 0 ? weightedSum / magnitudeSum : 0;
+            }
+            
+            detectSoundEvents(volume) {
+                const recentAverage = this.volumeHistory.slice(-5).reduce((a, b) => a + b, 0) / 5;
+                const spike = volume - recentAverage;
+                
+                // Yell detection (sudden volume increase)
+                if (spike > this.thresholds.yell && volume > 0.5) {
+                    this.handleYell();
+                    this.showSoundIndicator('JUMP!', '#ff6b6b');
+                }
+                
+                // Clap detection (sharp, brief spike)
+                else if (spike > this.thresholds.clap && this.audioFeatures.clarity > 0.7) {
+                    this.handleClap();
+                    this.showSoundIndicator('DASH!', '#4ecdc4');
+                }
+                
+                // Whistle detection (high frequency, sustained)
+                else if (this.audioFeatures.pitch > 800 && volume > this.thresholds.whistle) {
+                    this.handleWhistle();
+                    this.showSoundIndicator('FLOAT!', '#ffeb3b');
+                }
+                
+                // Blow detection (sustained moderate volume)
+                else if (volume > this.thresholds.blow && volume < 0.8 && recentAverage > 0.3) {
+                    this.handleBlow();
+                    this.showSoundIndicator('SHIELD!', '#9c27b0');
+                }
+            }
+            
+            handleYell() {
+                if (this.player.onGround) {
+                    this.player.velocityY = -15;
+                    this.player.onGround = false;
+                    this.addCombo();
+                    this.createJumpParticles();
+                    
+                    if (!this.achievements.firstJump) {
+                        this.achievements.firstJump = true;
+                        this.showAchievement('First Jump!');
+                    }
+                }
+            }
+            
+            handleClap() {
+                this.player.velocityX = 20;
+                this.addCombo();
+                this.createDashTrail();
+            }
+            
+            handleWhistle() {
+                this.player.isFloating = true;
+                this.player.velocityY = Math.max(this.player.velocityY - 0.5, -3);
+                this.createFloatParticles();
+            }
+            
+            handleBlow() {
+                this.player.hasShield = true;
+                this.player.shieldTime = Date.now() + 2000; // 2 seconds
+                this.createShieldEffect();
+            }
+            
+            showSoundIndicator(text, color) {
+                const indicator = document.getElementById('soundIndicator');
+                indicator.textContent = text;
+                indicator.style.color = color;
+                indicator.style.opacity = '1';
+                indicator.style.transform = 'translate(-50%, -50%) scale(1.2)';
+                
+                setTimeout(() => {
+                    indicator.style.opacity = '0';
+                    indicator.style.transform = 'translate(-50%, -50%) scale(1)';
+                }, 500);
+            }
+            
+            addCombo() {
+                const now = Date.now();
+                if (now - this.lastComboTime < 2000) {
+                    this.combo++;
+                } else {
+                    this.combo = 1;
+                }
+                this.lastComboTime = now;
+                
+                if (this.combo >= 10 && !this.achievements.combo10) {
+                    this.achievements.combo10 = true;
+                    this.showAchievement('Combo Master!');
+                }
+                
+                document.getElementById('combo').textContent = this.combo;
+            }
+            
+            showAchievement(text) {
+                const popup = document.getElementById('achievementPopup');
+                popup.textContent = '🏆 ' + text;
+                popup.style.opacity = '1';
+                popup.style.transform = 'translate(-50%, -50%) scale(1.1)';
+                
+                setTimeout(() => {
+                    popup.style.opacity = '0';
+                    popup.style.transform = 'translate(-50%, -50%) scale(1)';
+                }, 2000);
+            }
+            
+            createJumpParticles() {
+                for (let i = 0; i < 10; i++) {
+                    this.particles.push({
+                        x: this.player.x + this.player.width / 2,
+                        y: this.player.y + this.player.height,
+                        vx: (Math.random() - 0.5) * 10,
+                        vy: Math.random() * 5 + 2,
+                        life: 30,
+                        color: '#ff6b6b'
+                    });
+                }
+            }
+            
+            createDashTrail() {
+                this.player.trail.push({
+                    x: this.player.x,
+                    y: this.player.y,
+                    alpha: 1,
+                    life: 10
+                });
+            }
+            
+            createFloatParticles() {
+                if (Math.random() < 0.3) {
+                    this.particles.push({
+                        x: this.player.x + Math.random() * this.player.width,
+                        y: this.player.y + this.player.height,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: -Math.random() * 3 - 1,
+                        life: 40,
+                        color: '#ffeb3b'
+                    });
+                }
+            }
+            
+            createShieldEffect() {
+                for (let i = 0; i < 15; i++) {
+                    const angle = (i / 15) * Math.PI * 2;
+                    this.particles.push({
+                        x: this.player.x + this.player.width / 2 + Math.cos(angle) * 30,
+                        y: this.player.y + this.player.height / 2 + Math.sin(angle) * 30,
+                        vx: Math.cos(angle) * 3,
+                        vy: Math.sin(angle) * 3,
+                        life: 20,
+                        color: '#9c27b0'
+                    });
+                }
+            }
+            
+            createVolumeVisualizer() {
+                const container = document.getElementById('volumeBars');
+                for (let i = 0; i < 20; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'volume-bar';
+                    bar.style.height = '5px';
+                    container.appendChild(bar);
+                }
+            }
+            
+            updateVolumeVisualizer() {
+                const bars = document.querySelectorAll('.volume-bar');
+                const step = Math.floor(this.dataArray.length / bars.length);
+                
+                bars.forEach((bar, i) => {
+                    const value = this.dataArray[i * step];
+                    const height = (value / 255) * 80;
+                    bar.style.height = `${Math.max(height, 2)}px`;
+                });
+            }
+            
+            spawnEnemy() {
+                if (Math.random() < 0.02 + this.level * 0.005) {
+                    this.enemies.push({
+                        x: this.canvas.width,
+                        y: Math.random() * (this.canvas.height - 200) + 100,
+                        width: 40,
+                        height: 40,
+                        speed: 2 + this.level * 0.5,
+                        type: Math.random() < 0.7 ? 'triangle' : 'spike'
+                    });
+                }
+            }
+            
+            spawnPowerUp() {
+                if (Math.random() < 0.005) {
+                    this.powerUps.push({
+                        x: this.canvas.width,
+                        y: Math.random() * (this.canvas.height - 200) + 100,
+                        width: 30,
+                        height: 30,
+                        type: ['speed', 'shield', 'score'][Math.floor(Math.random() * 3)]
+                    });
+                }
+            }
+            
+            updatePlayer() {
+                // Apply gravity
+                this.player.velocityY += 0.8;
+                
+                // Handle floating
+                if (this.player.isFloating) {
+                    this.player.velocityY = Math.max(this.player.velocityY, -2);
+                    this.player.isFloating = false; // Reset each frame
+                }
+                
+                // Update position
+                this.player.x += this.player.velocityX;
+                this.player.y += this.player.velocityY;
+                
+                // Apply friction
+                this.player.velocityX *= 0.95;
+                
+                // Ground collision
+                const groundY = this.canvas.height - 100;
+                if (this.player.y + this.player.height > groundY) {
+                    this.player.y = groundY - this.player.height;
+                    this.player.velocityY = 0;
+                    this.player.onGround = true;
+                }
+                
+                // Keep player on screen
+                this.player.x = Math.max(0, Math.min(this.player.x, this.canvas.width - this.player.width));
+                
+                // Update shield
+                if (this.player.hasShield && Date.now() > this.player.shieldTime) {
+                    this.player.hasShield = false;
+                }
+                
+                // Update trail
+                this.player.trail = this.player.trail.filter(segment => {
+                    segment.life--;
+                    segment.alpha = segment.life / 10;
+                    return segment.life > 0;
+                });
+            }
+            
+            updateEnemies() {
+                this.enemies = this.enemies.filter(enemy => {
+                    enemy.x -= enemy.speed;
+                    
+                    // Check collision with player
+                    if (!this.player.hasShield &&
+                        enemy.x < this.player.x + this.player.width &&
+                        enemy.x + enemy.width > this.player.x &&
+                        enemy.y < this.player.y + this.player.height &&
+                        enemy.y + enemy.height > this.player.y) {
+                        
+                        this.lives--;
+                        this.combo = 0;
+                        this.createHitEffect();
+                        
+                        if (this.lives <= 0) {
+                            this.gameOver();
+                        }
+                        
+                        return false;
+                    }
+                    
+                    return enemy.x > -enemy.width;
+                });
+            }
+            
+            updatePowerUps() {
+                this.powerUps = this.powerUps.filter(powerUp => {
+                    powerUp.x -= 3;
+                    
+                    // Check collision with player
+                    if (powerUp.x < this.player.x + this.player.width &&
+                        powerUp.x + powerUp.width > this.player.x &&
+                        powerUp.y < this.player.y + this.player.height &&
+                        powerUp.y + powerUp.height > this.player.y) {
+                        
+                        this.handlePowerUp(powerUp.type);
+                        return false;
+                    }
+                    
+                    return powerUp.x > -powerUp.width;
+                });
+            }
+            
+            handlePowerUp(type) {
+                switch (type) {
+                    case 'speed':
+                        this.score += 50;
+                        break;
+                    case 'shield':
+                        this.player.hasShield = true;
+                        this.player.shieldTime = Date.now() + 3000;
+                        break;
+                    case 'score':
+                        this.score += 100;
+                        break;
+                }
+                this.addCombo();
+            }
+            
+            updateParticles() {
+                this.particles = this.particles.filter(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vy += 0.2; // Gravity
+                    particle.life--;
+                    return particle.life > 0;
+                });
+            }
+            
+            createHitEffect() {
+                for (let i = 0; i < 20; i++) {
+                    this.particles.push({
+                        x: this.player.x + this.player.width / 2,
+                        y: this.player.y + this.player.height / 2,
+                        vx: (Math.random() - 0.5) * 15,
+                        vy: (Math.random() - 0.5) * 15,
+                        life: 25,
+                        color: '#ff0000'
+                    });
+                }
+            }
+            
+            updateScore() {
+                if (this.gameRunning) {
+                    this.score += 1 + Math.floor(this.combo / 5);
+                    
+                    // Level progression
+                    const newLevel = Math.floor(this.score / 1000) + 1;
+                    if (newLevel > this.level) {
+                        this.level = newLevel;
+                        if (this.level === 5 && !this.achievements.level5) {
+                            this.achievements.level5 = true;
+                            this.showAchievement('Level 5 Reached!');
+                        }
+                    }
+                }
+            }
+            
+            render() {
+                // Clear canvas
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw background gradient
+                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                gradient.addColorStop(0, '#87CEEB');
+                gradient.addColorStop(0.5, '#98FB98');
+                gradient.addColorStop(1, '#8FBC8F');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw ground
+                this.ctx.fillStyle = '#654321';
+                this.ctx.fillRect(0, this.canvas.height - 100, this.canvas.width, 100);
+                
+                // Draw player trail
+                this.player.trail.forEach(segment => {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = segment.alpha;
+                    this.ctx.fillStyle = this.player.color;
+                    this.ctx.fillRect(segment.x, segment.y, this.player.width, this.player.height);
+                    this.ctx.restore();
+                });
+                
+                // Draw player
+                this.ctx.fillStyle = this.player.color;
+                this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+                
+                // Draw shield effect
+                if (this.player.hasShield) {
+                    this.ctx.save();
+                    this.ctx.strokeStyle = '#9c27b0';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.arc(
+                        this.player.x + this.player.width / 2,
+                        this.player.y + this.player.height / 2,
+                        35 + Math.sin(Date.now() * 0.01) * 5,
+                        0,
+                        Math.PI * 2
+                    );
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                }
+                
+                // Draw enemies
+                this.enemies.forEach(enemy => {
+                    this.ctx.fillStyle = '#ff4444';
+                    if (enemy.type === 'triangle') {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(enemy.x + enemy.width / 2, enemy.y);
+                        this.ctx.lineTo(enemy.x, enemy.y + enemy.height);
+                        this.ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height);
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                    } else {
+                        // Spike enemy
+                        this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                        // Add spikes
+                        this.ctx.beginPath();
+                        for (let i = 0; i < 4; i++) {
+                            const spikeX = enemy.x + (i * enemy.width / 3);
+                            this.ctx.moveTo(spikeX, enemy.y);
+                            this.ctx.lineTo(spikeX + 5, enemy.y - 10);
+                            this.ctx.lineTo(spikeX + 10, enemy.y);
+                        }
+                        this.ctx.fill();
+                    }
+                });
+                
+                // Draw power-ups
+                this.powerUps.forEach(powerUp => {
+                    this.ctx.save();
+                    this.ctx.translate(powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height / 2);
+                    this.ctx.rotate(Date.now() * 0.005);
+                    
+                    const colors = {
+                        speed: '#00ff00',
+                        shield: '#9c27b0',
+                        score: '#ffd700'
+                    };
+                    
+                    this.ctx.fillStyle = colors[powerUp.type];
+                    this.ctx.fillRect(-powerUp.width / 2, -powerUp.height / 2, powerUp.width, powerUp.height);
+                    this.ctx.restore();
+                });
+                
+                // Draw particles
+                this.particles.forEach(particle => {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = particle.life / 40;
+                    this.ctx.fillStyle = particle.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.restore();
+                });
+                
+                // Draw HUD updates
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('level').textContent = this.level;
+                document.getElementById('lives').textContent = this.lives;
+            }
+            
+            gameLoop() {
+                if (this.gameRunning) {
+                    this.updatePlayer();
+                    this.updateEnemies();
+                    this.updatePowerUps();
+                    this.updateParticles();
+                    this.updateScore();
+                    this.spawnEnemy();
+                    this.spawnPowerUp();
+                }
+                
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            resetGameState() {
+                this.score = 0;
+                this.level = 1;
+                this.lives = 3;
+                this.combo = 0;
+                this.player.x = 100;
+                this.player.y = 300;
+                this.player.velocityX = 0;
+                this.player.velocityY = 0;
+                this.player.onGround = true;
+                this.player.hasShield = false;
+                this.enemies = [];
+                this.powerUps = [];
+                this.particles = [];
+                this.player.trail = [];
+            }
+            
+            gameOver() {
+                this.gameRunning = false;
+                document.getElementById('finalScore').textContent = this.score;
+                document.getElementById('finalLevel').textContent = this.level;
+                document.getElementById('gameOverScreen').classList.add('visible');
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('startButton').textContent = 'Start Adventure';
+            }
+            
+            async calibrateAudio() {
+                try {
+                    if (!this.audioContext) {
+                        await this.initializeAudio();
+                    }
+                    
+                    alert('Calibration started! Make different sounds for 10 seconds...');
+                    
+                    const samples = [];
+                    const startTime = Date.now();
+                    
+                    const calibrationLoop = () => {
+                        if (Date.now() - startTime < 10000) {
+                            this.analyser.getByteFrequencyData(this.dataArray);
+                            const volume = this.dataArray.reduce((a, b) => a + b, 0) / (this.dataArray.length * 255);
+                            samples.push(volume);
+                            requestAnimationFrame(calibrationLoop);
+                        } else {
+                            this.finishCalibration(samples);
+                        }
+                    };
+                    
+                    calibrationLoop();
+                } catch (error) {
+                    console.error('Calibration failed:', error);
+                    alert('Please allow microphone access for calibration!');
+                }
+            }
+            
+            finishCalibration(samples) {
+                const sorted = samples.sort((a, b) => a - b);
+                const percentile95 = sorted[Math.floor(sorted.length * 0.95)];
+                const percentile85 = sorted[Math.floor(sorted.length * 0.85)];
+                const percentile70 = sorted[Math.floor(sorted.length * 0.70)];
+                const percentile50 = sorted[Math.floor(sorted.length * 0.50)];
+                
+                this.thresholds = {
+                    yell: Math.min(percentile85, 0.8),
+                    clap: Math.min(percentile95, 0.9),
+                    whistle: Math.min(percentile70, 0.7),
+                    blow: Math.min(percentile50, 0.5)
+                };
+                
+                alert('Calibration complete! Thresholds adjusted to your voice.');
+            }
+        }
+        
+        // Initialize the game
+        let game;
+        
+        function restartGame() {
+            document.getElementById('gameOverScreen').classList.remove('visible');
+            game.startGame();
+        }
+        
+        // Advanced audio analysis utilities
+        class AudioAnalyzer {
+            static detectClap(frequencyData, previousData) {
+                // Clap detection using spectral flux
+                let spectralFlux = 0;
+                for (let i = 0; i < frequencyData.length; i++) {
+                    const diff = frequencyData[i] - (previousData[i] || 0);
+                    if (diff > 0) spectralFlux += diff;
+                }
+                return spectralFlux;
+            }
+            
+            static detectWhistle(frequencyData, sampleRate) {
+                // Look for peak in high frequency range (1000-4000 Hz)
+                const startBin = Math.floor(1000 * frequencyData.length * 2 / sampleRate);
+                const endBin = Math.floor(4000 * frequencyData.length * 2 / sampleRate);
+                
+                let maxValue = 0;
+                let maxBin = 0;
+                
+                for (let i = startBin; i < endBin && i < frequencyData.length; i++) {
+                    if (frequencyData[i] > maxValue) {
+                        maxValue = frequencyData[i];
+                        maxBin = i;
+                    }
+                }
+                
+                return { frequency: maxBin * sampleRate / (2 * frequencyData.length), magnitude: maxValue };
+            }
+            
+            static calculateZeroCrossingRate(audioBuffer) {
+                let crossings = 0;
+                for (let i = 1; i < audioBuffer.length; i++) {
+                    if ((audioBuffer[i] >= 0) !== (audioBuffer[i - 1] >= 0)) {
+                        crossings++;
+                    }
+                }
+                return crossings / audioBuffer.length;
+            }
+        }
+        
+        // Enhanced particle system
+        class ParticleSystem {
+            constructor() {
+                this.particles = [];
+                this.presets = {
+                    explosion: {
+                        count: 20,
+                        speed: 10,
+                        life: 30,
+                        colors: ['#ff6b6b', '#ffa500', '#ffff00']
+                    },
+                    trail: {
+                        count: 5,
+                        speed: 2,
+                        life: 20,
+                        colors: ['#4ecdc4', '#45b7cd']
+                    },
+                    magic: {
+                        count: 15,
+                        speed: 5,
+                        life: 40,
+                        colors: ['#9c27b0', '#e91e63', '#3f51b5']
+                    }
+                };
+            }
+            
+            emit(x, y, preset, customConfig = {}) {
+                const config = { ...this.presets[preset], ...customConfig };
+                
+                for (let i = 0; i < config.count; i++) {
+                    const angle = (Math.PI * 2 * i) / config.count + Math.random() * 0.5;
+                    const speed = config.speed * (0.5 + Math.random() * 0.5);
+                    
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: config.life,
+                        maxLife: config.life,
+                        color: config.colors[Math.floor(Math.random() * config.colors.length)],
+                        size: 2 + Math.random() * 3
+                    });
+                }
+            }
+            
+            update() {
+                this.particles = this.particles.filter(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vy += 0.2; // Gravity
+                    particle.life--;
+                    return particle.life > 0;
+                });
+            }
+            
+            render(ctx) {
+                this.particles.forEach(particle => {
+                    ctx.save();
+                    ctx.globalAlpha = particle.life / particle.maxLife;
+                    ctx.fillStyle = particle.color;
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+        }
+        
+        // Initialize everything when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            game = new SoundActivatedGame();
+            
+            // Add some initial instructions
+            const instructions = [
+                "🎮 Welcome to Sound-Activated Adventure!",
+                "🎤 Use your voice and sounds to control the game",
+                "🏆 Chain actions together for combo bonuses",
+                "⚡ Collect power-ups to enhance your abilities",
+                "🎯 Survive as long as possible to achieve high scores!"
+            ];
+            
+            console.log(instructions.join('\n'));
+        });
+        
+        // Performance monitoring
+        class PerformanceMonitor {
+            constructor() {
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.fps = 60;
+            }
+            
+            update() {
+                this.frameCount++;
+                const now = performance.now();
+                
+                if (now - this.lastTime >= 1000) {
+                    this.fps = Math.round((this.frameCount * 1000) / (now - this.lastTime));
+                    this.frameCount = 0;
+                    this.lastTime = now;
+                    
+                    // Adjust quality based on performance
+                    if (this.fps < 30) {
+                        console.warn('Low FPS detected, consider optimizing');
+                    }
+                }
+            }
+            
+            getFPS() {
+                return this.fps;
+            }
+        }
+    </script>
+</body>
+</html>
