@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundScape Adventure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 70%, #228B22 100%);
+            overflow: hidden;
+            animation: skyShift 30s ease-in-out infinite;
+        }
+
+        @keyframes skyShift {
+            0%, 100% { filter: hue-rotate(0deg) brightness(1); }
+            25% { filter: hue-rotate(15deg) brightness(1.1); }
+            50% { filter: hue-rotate(30deg) brightness(0.9); }
+            75% { filter: hue-rotate(-15deg) brightness(1.05); }
+        }
+
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            color: white;
+            font-weight: 600;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            padding: 20px 25px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .hud:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .score {
+            font-size: 28px;
+            margin-bottom: 12px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+        }
+
+        .level {
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: #87CEEB;
+        }
+
+        .lives {
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lives-hearts {
+            display: flex;
+            gap: 4px;
+        }
+
+        .heart {
+            font-size: 20px;
+            animation: heartbeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .audio-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            padding: 16px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .audio-indicator:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .audio-indicator.listening {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); }
+            50% { box-shadow: 0 8px 32px rgba(0, 255, 136, 0.3); }
+        }
+
+        .volume-bars {
+            display: flex;
+            gap: 4px;
+            margin-right: 15px;
+            align-items: end;
+        }
+
+        .volume-bar {
+            width: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .volume-bar:nth-child(1) { height: 12px; }
+        .volume-bar:nth-child(2) { height: 16px; }
+        .volume-bar:nth-child(3) { height: 20px; }
+        .volume-bar:nth-child(4) { height: 24px; }
+        .volume-bar:nth-child(5) { height: 28px; }
+
+        .volume-bar.active {
+            background: linear-gradient(0deg, #00ff88, #00ffff);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
+            transform: scaleY(1.1);
+        }
+
+        .volume-bar.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(0deg, transparent, rgba(255, 255, 255, 0.3));
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .player {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 
+                0 0 20px rgba(255, 107, 107, 0.5),
+                inset 0 0 20px rgba(255, 255, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 10;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ff6b6b, #ffa500, #ff6b6b);
+            border-radius: 50%;
+            z-index: -1;
+            animation: rotate 3s linear infinite;
+        }
+
+        .player::after {
+            content: '🎵';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        .player.jumping {
+            transform: scale(1.3) rotate(360deg);
+            box-shadow: 
+                0 0 40px rgba(255, 107, 107, 0.8),
+                0 0 80px rgba(255, 107, 107, 0.4),
+                inset 0 0 30px rgba(255, 255, 255, 0.3);
+            border-color: #ffd700;
+        }
+
+        .player.moving-left {
+            transform: skewX(-10deg);
+            filter: hue-rotate(30deg);
+        }
+
+        .player.moving-right {
+            transform: skewX(10deg);
+            filter: hue-rotate(-30deg);
+        }
+
+        .player.dashing {
+            transform: scale(0.8) skewX(20deg);
+            box-shadow: 
+                0 0 30px rgba(255, 0, 255, 0.8),
+                0 0 60px rgba(255, 0, 255, 0.4);
+        }
+
+        .collectible {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            background: 
+                radial-gradient(circle at 30% 30%, #fff, transparent 50%),
+                linear-gradient(45deg, #ffd700, #ffed4e);
+            border-radius: 50%;
+            border: 3px solid #ffa500;
+            animation: collectibleFloat 2s ease-in-out infinite;
+            box-shadow: 
+                0 0 20px rgba(255, 215, 0, 0.6),
+                0 0 40px rgba(255, 215, 0, 0.3);
+            position: relative;
+        }
+
+        .collectible::before {
+            content: '⭐';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            animation: sparkle 1.5s ease-in-out infinite;
+        }
+
+        @keyframes collectibleFloat {
+            0%, 100% { 
+                transform: translateY(0px) rotate(0deg) scale(1); 
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            }
+            50% { 
+                transform: translateY(-15px) rotate(180deg) scale(1.1); 
+                box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+            }
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 0.8; transform: translate(-50%, -50%) rotate(0deg); }
+            50% { opacity: 1; transform: translate(-50%, -50%) rotate(180deg); }
+        }
+
+        .obstacle {
+            position: absolute;
+            background: 
+                linear-gradient(45deg, #8b0000, #ff4444, #8b0000),
+                radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.3), transparent 40%);
+            border-radius: 15px;
+            border: 3px solid #660000;
+            box-shadow: 
+                0 0 20px rgba(139, 0, 0, 0.6),
+                inset 0 0 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            animation: obstacleGlow 3s ease-in-out infinite;
+        }
+
+        .obstacle::before {
+            content: '⚠️';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            animation: warning 1s ease-in-out infinite;
+        }
+
+        @keyframes obstacleGlow {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(139, 0, 0, 0.6);
+                border-color: #660000;
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+                border-color: #ff0000;
+            }
+        }
+
+        @keyframes warning {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            z-index: 5;
+        }
+
+        .sound-wave {
+            position: absolute;
+            border: 2px solid rgba(0, 255, 136, 0.6);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(20px);
+            padding: 25px 30px;
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            text-align: center;
+            font-size: 14px;
+            max-width: 700px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .controls:hover {
+            transform: translateX(-50%) translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .control-item {
+            display: inline-block;
+            margin: 0 12px;
+            padding: 12px 18px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .control-item:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-item:nth-child(1) { border-left: 3px solid #ff6b6b; }
+        .control-item:nth-child(2) { border-left: 3px solid #ffa500; }
+        .control-item:nth-child(3) { border-left: 3px solid #00ff88; }
+        .control-item:nth-child(4) { border-left: 3px solid #ff00ff; }
+
+        .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3), transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3), transparent 50%),
+                linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+            text-align: center;
+            animation: backgroundFloat 20s ease-in-out infinite;
+        }
+
+        @keyframes backgroundFloat {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .start-screen h1 {
+            font-size: 56px;
+            margin-bottom: 25px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(45deg, #ffd700, #ff6b6b, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% 200%;
+            animation: titleGlow 3s ease-in-out infinite;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { 
+                background-position: 0% 50%; 
+                filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.3));
+            }
+            50% { 
+                background-position: 100% 50%; 
+                filter: drop-shadow(0 0 30px rgba(255, 107, 107, 0.4));
+            }
+        }
+
+        .start-screen p {
+            font-size: 20px;
+            margin-bottom: 40px;
+            max-width: 600px;
+            line-height: 1.8;
+            opacity: 0.95;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+            font-weight: 400;
+        }
+
+        .start-btn {
+            padding: 18px 40px;
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff6b6b, #ffa500, #ff6b6b);
+            background-size: 200% 200%;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.2),
+                inset 0 0 20px rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: buttonPulse 4s ease-in-out infinite;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .start-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: left 0.6s;
+        }
+
+        .start-btn:hover::before {
+            left: 100%;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 
+                0 15px 35px rgba(0, 0, 0, 0.3),
+                0 0 30px rgba(255, 107, 107, 0.4);
+            background-position: 100% 0;
+        }
+
+        .start-btn:active {
+            transform: translateY(-1px) scale(1.02);
+        }
+
+        @keyframes buttonPulse {
+            0%, 100% { box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); }
+            50% { box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3); }
+        }
+        .start-screen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .start-screen p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+
+        .start-btn {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: 
+                linear-gradient(145deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9)),
+                radial-gradient(circle at center, rgba(255, 0, 0, 0.1), transparent 70%);
+            color: white;
+            padding: 50px 60px;
+            border-radius: 30px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                inset 0 0 30px rgba(255, 255, 255, 0.05);
+            animation: gameOverAppear 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes gameOverAppear {
+            0% { 
+                opacity: 0; 
+                transform: translate(-50%, -50%) scale(0.8) rotate(-5deg); 
+            }
+            100% { 
+                opacity: 1; 
+                transform: translate(-50%, -50%) scale(1) rotate(0deg); 
+            }
+        }
+
+        .game-over h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            font-weight: 800;
+        }
+
+        .game-over p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        /* Particle effects */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            z-index: 5;
+            animation: particleFade 2s ease-out forwards;
+        }
+
+        @keyframes particleFade {
+            0% { 
+                opacity: 1; 
+                transform: scale(1); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: scale(0); 
+            }
+        }
+
+        .sound-wave {
+            position: absolute;
+            border: 2px solid rgba(0, 255, 136, 0.6);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+            animation: waveExpand 1s ease-out forwards;
+        }
+
+        @keyframes waveExpand {
+            0% { 
+                opacity: 0.8; 
+                transform: scale(0); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: scale(3); 
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .start-screen h1 { font-size: 40px; }
+            .start-screen p { font-size: 16px; max-width: 90%; }
+            .hud { left: 15px; top: 15px; padding: 15px 20px; }
+            .audio-indicator { right: 15px; top: 15px; }
+            .controls { bottom: 15px; max-width: 90%; font-size: 12px; }
+            .control-item { margin: 0 8px; padding: 8px 12px; }
+            .sound-command { font-size: 24px; }
+        }
+
+        @media (max-width: 480px) {
+            .start-screen h1 { font-size: 32px; }
+            .hud .score { font-size: 24px; }
+            .controls { padding: 15px 20px; }
+            .player { width: 50px; height: 50px; }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            .audio-indicator, .hud, .controls {
+                background: rgba(0, 0, 0, 0.8);
+                border: 2px solid white;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        .frequency-display {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            color: white;
+            font-size: 13px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            padding: 15px 18px;
+            border-radius: 15px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            line-height: 1.6;
+        }
+
+        .frequency-display:hover {
+            background: rgba(0, 0, 0, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .frequency-display span {
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        .sound-command {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 32px;
+            font-weight: 900;
+            text-shadow: 
+                2px 2px 4px rgba(0, 0, 0, 0.7),
+                0 0 20px rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 50;
+            background: linear-gradient(45deg, #ff6b6b, #ffa500, #00ff88, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 300% 300%;
+            animation: gradientShift 2s ease infinite;
+            letter-spacing: 2px;
+            text-align: center;
+            padding: 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .sound-command.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="start-screen" id="startScreen">
+        <h1>🎵 SoundScape Adventure</h1>
+        <p>Control your character with your voice and sounds! Make noise to jump, whistle to move right, clap to move left, and use different frequencies for special abilities.</p>
+        <button class="start-btn" onclick="startGame()">🎤 Start Adventure</button>
+    </div>
+
+    <div class="game-container" id="gameContainer" style="display: none;">
+        <div class="hud">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="level">Level: <span id="level">1</span></div>
+            <div>Lives: <div class="lives"><span id="lives">3</span><div class="lives-hearts"><span class="heart">❤️</span><span class="heart">❤️</span><span class="heart">❤️</span></div></div></div>
+        </div>
+
+        <div class="audio-indicator">
+            <div class="volume-bars">
+                <div class="volume-bar"></div>
+                <div class="volume-bar"></div>
+                <div class="volume-bar"></div>
+                <div class="volume-bar"></div>
+                <div class="volume-bar"></div>
+            </div>
+            <span id="audioStatus">🎤 Listening...</span>
+        </div>
+
+        <div class="frequency-display" id="freqDisplay">
+            Freq: <span id="frequency">0</span> Hz<br>
+            Vol: <span id="volume">0</span>%<br>
+            Command: <span id="command">-</span>
+        </div>
+
+        <div class="sound-command" id="soundCommand"></div>
+
+        <div class="player" id="player"></div>
+
+        <div class="controls">
+            <div class="control-item">🗣️ Loud Sound = Jump</div>
+            <div class="control-item">👏 Clap = Move Left</div>
+            <div class="control-item">🎵 Whistle = Move Right</div>
+            <div class="control-item">🔊 High Pitch = Dash</div>
+        </div>
+
+        <div class="game-over" id="gameOver">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <button class="start-btn" onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        class SoundScapeGame {
+            constructor() {
+                this.canvas = null;
+                this.ctx = null;
+                this.audioContext = null;
+                this.analyser = null;
+                this.microphone = null;
+                this.dataArray = null;
+                
+                this.player = {
+                    x: 100,
+                    y: 400,
+                    width: 60,
+                    height: 60,
+                    velocityX: 0,
+                    velocityY: 0,
+                    onGround: true,
+                    speed: 5
+                };
+
+                this.gameState = {
+                    score: 0,
+                    level: 1,
+                    lives: 3,
+                    running: false,
+                    collectibles: [],
+                    obstacles: [],
+                    particles: [],
+                    soundWaves: []
+                };
+
+                this.audioData = {
+                    volume: 0,
+                    frequency: 0,
+                    lastCommand: '-',
+                    commandHistory: []
+                };
+
+                this.init();
+            }
+
+            async init() {
+                this.setupAudio();
+                this.setupEventListeners();
+                this.gameLoop();
+            }
+
+            async setupAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    
+                    this.microphone = this.audioContext.createMediaStreamSource(stream);
+                    this.analyser = this.audioContext.createAnalyser();
+                    
+                    this.analyser.fftSize = 2048;
+                    this.analyser.smoothingTimeConstant = 0.3;
+                    
+                    const bufferLength = this.analyser.frequencyBinCount;
+                    this.dataArray = new Uint8Array(bufferLength);
+                    this.frequencyData = new Uint8Array(bufferLength);
+                    
+                    this.microphone.connect(this.analyser);
+                    
+                    console.log('Audio setup successful');
+                } catch (error) {
+                    console.error('Audio setup failed:', error);
+                    document.getElementById('audioStatus').textContent = '🔇 Microphone access denied';
+                }
+            }
+
+            setupEventListeners() {
+                window.addEventListener('resize', () => this.handleResize());
+                document.addEventListener('keydown', (e) => this.handleKeyboard(e));
+            }
+
+            handleResize() {
+                // Handle responsive design
+                const container = document.getElementById('gameContainer');
+                // Adjust game elements based on screen size
+            }
+
+            handleKeyboard(e) {
+                // Fallback keyboard controls for testing
+                if (!this.gameState.running) return;
+                
+                switch(e.code) {
+                    case 'Space':
+                        this.jump();
+                        break;
+                    case 'ArrowLeft':
+                        this.moveLeft();
+                        break;
+                    case 'ArrowRight':
+                        this.moveRight();
+                        break;
+                }
+            }
+
+            analyzeAudio() {
+                if (!this.analyser) return;
+
+                this.analyser.getByteTimeDomainData(this.dataArray);
+                this.analyser.getByteFrequencyData(this.frequencyData);
+
+                // Calculate volume (RMS)
+                let sum = 0;
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const sample = (this.dataArray[i] - 128) / 128;
+                    sum += sample * sample;
+                }
+                this.audioData.volume = Math.sqrt(sum / this.dataArray.length) * 100;
+
+                // Find dominant frequency
+                let maxIndex = 0;
+                let maxValue = 0;
+                for (let i = 0; i < this.frequencyData.length; i++) {
+                    if (this.frequencyData[i] > maxValue) {
+                        maxValue = this.frequencyData[i];
+                        maxIndex = i;
+                    }
+                }
+                this.audioData.frequency = (maxIndex * this.audioContext.sampleRate) / (this.analyser.fftSize * 2);
+
+                this.updateAudioDisplay();
+                this.processAudioCommands();
+            }
+
+            updateAudioDisplay() {
+                // Update volume bars
+                const volumeBars = document.querySelectorAll('.volume-bar');
+                const volumeLevel = Math.min(this.audioData.volume / 20, 1);
+                
+                volumeBars.forEach((bar, index) => {
+                    if (index < volumeLevel * volumeBars.length) {
+                        bar.classList.add('active');
+                    } else {
+                        bar.classList.remove('active');
+                    }
+                });
+
+                // Update frequency display
+                document.getElementById('frequency').textContent = Math.round(this.audioData.frequency);
+                document.getElementById('volume').textContent = Math.round(this.audioData.volume);
+                document.getElementById('command').textContent = this.audioData.lastCommand;
+            }
+
+            processAudioCommands() {
+                const volume = this.audioData.volume;
+                const frequency = this.audioData.frequency;
+                
+                let command = '-';
+                
+                // Loud sound = Jump
+                if (volume > 25) {
+                    command = 'JUMP';
+                    this.jump();
+                    this.createSoundWave(this.player.x + 30, this.player.y + 30, '#ff6b6b');
+                }
+                
+                // High frequency whistle = Move Right
+                if (frequency > 2000 && frequency < 4000 && volume > 15) {
+                    command = 'WHISTLE→';
+                    this.moveRight();
+                    this.createSoundWave(this.player.x + 30, this.player.y + 30, '#00ff88');
+                }
+                
+                // Mid frequency clap = Move Left
+                if (frequency > 500 && frequency < 1500 && volume > 20) {
+                    command = 'CLAP←';
+                    this.moveLeft();
+                    this.createSoundWave(this.player.x + 30, this.player.y + 30, '#ffa500');
+                }
+                
+                // Very high frequency = Dash
+                if (frequency > 4000 && volume > 10) {
+                    command = 'DASH';
+                    this.dash();
+                    this.createSoundWave(this.player.x + 30, this.player.y + 30, '#ff00ff');
+                }
+
+                // Prevent command spam
+                if (command !== '-' && this.audioData.lastCommand !== command) {
+                    this.audioData.lastCommand = command;
+                    this.showSoundCommand(command);
+                    
+                    // Clear command after short delay
+                    setTimeout(() => {
+                        if (this.audioData.lastCommand === command) {
+                            this.audioData.lastCommand = '-';
+                        }
+                    }, 500);
+                }
+            }
+
+            showSoundCommand(command) {
+                const commandDiv = document.getElementById('soundCommand');
+                commandDiv.textContent = command;
+                commandDiv.classList.add('show');
+                
+                setTimeout(() => {
+                    commandDiv.classList.remove('show');
+                }, 1000);
+            }
+
+            createSoundWave(x, y, color) {
+                const wave = document.createElement('div');
+                wave.className = 'sound-wave';
+                wave.style.left = (x - 25) + 'px';
+                wave.style.top = (y - 25) + 'px';
+                wave.style.width = '50px';
+                wave.style.height = '50px';
+                wave.style.borderColor = color;
+                
+                document.getElementById('gameContainer').appendChild(wave);
+                
+                let scale = 1;
+                let opacity = 1;
+                
+                const animate = () => {
+                    scale += 0.1;
+                    opacity -= 0.05;
+                    
+                    wave.style.transform = `scale(${scale})`;
+                    wave.style.opacity = opacity;
+                    
+                    if (opacity > 0) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        wave.remove();
+                    }
+                };
+                
+                requestAnimationFrame(animate);
+            }
+
+            jump() {
+                if (this.player.onGround && this.gameState.running) {
+                    this.player.velocityY = -15;
+                    this.player.onGround = false;
+                    document.getElementById('player').classList.add('jumping');
+                    
+                    setTimeout(() => {
+                        document.getElementById('player').classList.remove('jumping');
+                    }, 500);
+                    
+                    this.createParticles(this.player.x + 30, this.player.y + 60, '#ff6b6b');
+                }
+            }
+
+            moveLeft() {
+                if (this.gameState.running) {
+                    this.player.velocityX = -8;
+                    this.createParticles(this.player.x + 30, this.player.y + 30, '#ffa500');
+                    
+                    const playerElement = document.getElementById('player');
+                    playerElement.classList.add('moving-left');
+                    setTimeout(() => {
+                        playerElement.classList.remove('moving-left');
+                    }, 300);
+                }
+            }
+
+            moveRight() {
+                if (this.gameState.running) {
+                    this.player.velocityX = 8;
+                    this.createParticles(this.player.x + 30, this.player.y + 30, '#00ff88');
+                    
+                    const playerElement = document.getElementById('player');
+                    playerElement.classList.add('moving-right');
+                    setTimeout(() => {
+                        playerElement.classList.remove('moving-right');
+                    }, 300);
+                }
+            }
+
+            dash() {
+                if (this.gameState.running) {
+                    this.player.velocityX = this.player.velocityX > 0 ? 15 : -15;
+                    this.createParticles(this.player.x + 30, this.player.y + 30, '#ff00ff');
+                    
+                    const playerElement = document.getElementById('player');
+                    playerElement.classList.add('dashing');
+                    setTimeout(() => {
+                        playerElement.classList.remove('dashing');
+                    }, 400);
+                }
+            }
+
+            createParticles(x, y, color) {
+                for (let i = 0; i < 8; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = x + 'px';
+                    particle.style.top = y + 'px';
+                    particle.style.width = '6px';
+                    particle.style.height = '6px';
+                    particle.style.background = color;
+                    
+                    document.getElementById('gameContainer').appendChild(particle);
+                    
+                    const angle = (Math.PI * 2 * i) / 8;
+                    const velocity = 5;
+                    let vx = Math.cos(angle) * velocity;
+                    let vy = Math.sin(angle) * velocity;
+                    let life = 1;
+                    
+                    const animateParticle = () => {
+                        x += vx;
+                        y += vy;
+                        vy += 0.2; // gravity
+                        life -= 0.02;
+                        
+                        particle.style.left = x + 'px';
+                        particle.style.top = y + 'px';
+                        particle.style.opacity = life;
+                        
+                        if (life > 0) {
+                            requestAnimationFrame(animateParticle);
+                        } else {
+                            particle.remove();
+                        }
+                    };
+                    
+                    requestAnimationFrame(animateParticle);
+                }
+            }
+
+            updatePlayer() {
+                if (!this.gameState.running) return;
+
+                // Apply gravity
+                if (!this.player.onGround) {
+                    this.player.velocityY += 0.8;
+                }
+
+                // Update position
+                this.player.x += this.player.velocityX;
+                this.player.y += this.player.velocityY;
+
+                // Apply friction
+                this.player.velocityX *= 0.85;
+
+                // Ground collision
+                const groundLevel = window.innerHeight - 200;
+                if (this.player.y + this.player.height >= groundLevel) {
+                    this.player.y = groundLevel - this.player.height;
+                    this.player.velocityY = 0;
+                    this.player.onGround = true;
+                }
+
+                // Screen boundaries
+                if (this.player.x < 0) this.player.x = 0;
+                if (this.player.x > window.innerWidth - this.player.width) {
+                    this.player.x = window.innerWidth - this.player.width;
+                }
+
+                // Update DOM element
+                const playerElement = document.getElementById('player');
+                playerElement.style.left = this.player.x + 'px';
+                playerElement.style.top = this.player.y + 'px';
+            }
+
+            spawnCollectible() {
+                if (Math.random() < 0.02) {
+                    const collectible = document.createElement('div');
+                    collectible.className = 'collectible';
+                    collectible.style.left = (window.innerWidth + 50) + 'px';
+                    collectible.style.top = (Math.random() * (window.innerHeight - 300) + 100) + 'px';
+                    
+                    document.getElementById('gameContainer').appendChild(collectible);
+                    this.gameState.collectibles.push({
+                        element: collectible,
+                        x: window.innerWidth + 50,
+                        y: parseInt(collectible.style.top)
+                    });
+                }
+            }
+
+            spawnObstacle() {
+                if (Math.random() < 0.015) {
+                    const obstacle = document.createElement('div');
+                    obstacle.className = 'obstacle';
+                    const width = 40 + Math.random() * 60;
+                    const height = 40 + Math.random() * 60;
+                    obstacle.style.width = width + 'px';
+                    obstacle.style.height = height + 'px';
+                    obstacle.style.left = (window.innerWidth + 50) + 'px';
+                    obstacle.style.top = (window.innerHeight - 200 - height) + 'px';
+                    
+                    document.getElementById('gameContainer').appendChild(obstacle);
+                    this.gameState.obstacles.push({
+                        element: obstacle,
+                        x: window.innerWidth + 50,
+                        y: window.innerHeight - 200 - height,
+                        width: width,
+                        height: height
+                    });
+                }
+            }
+
+            updateGameObjects() {
+                const speed = 2 + this.gameState.level * 0.5;
+
+                // Update collectibles
+                this.gameState.collectibles = this.gameState.collectibles.filter(collectible => {
+                    collectible.x -= speed;
+                    collectible.element.style.left = collectible.x + 'px';
+
+                    // Check collision with player
+                    if (this.checkCollision(this.player, collectible)) {
+                        this.collectItem(collectible);
+                        return false;
+                    }
+
+                    // Remove if off screen
+                    if (collectible.x < -50) {
+                        collectible.element.remove();
+                        return false;
+                    }
+                    return true;
+                });
+
+                // Update obstacles
+                this.gameState.obstacles = this.gameState.obstacles.filter(obstacle => {
+                    obstacle.x -= speed;
+                    obstacle.element.style.left = obstacle.x + 'px';
+
+                    // Check collision with player
+                    if (this.checkCollision(this.player, obstacle)) {
+                        this.hitObstacle();
+                    }
+
+                    // Remove if off screen
+                    if (obstacle.x < -100) {
+                        obstacle.element.remove();
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+            checkCollision(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+
+            collectItem(collectible) {
+                this.gameState.score += 100;
+                collectible.element.remove();
+                this.createParticles(collectible.x, collectible.y, '#ffd700');
+                
+                // Level up every 1000 points
+                if (this.gameState.score % 1000 === 0) {
+                    this.gameState.level++;
+                    this.showSoundCommand(`LEVEL ${this.gameState.level}!`);
+                }
+
+                this.updateUI();
+            }
+
+            hitObstacle() {
+                this.gameState.lives--;
+                this.createParticles(this.player.x + 30, this.player.y + 30, '#ff0000');
+                
+                if (this.gameState.lives <= 0) {
+                    this.gameOver();
+                } else {
+                    this.showSoundCommand(`${this.gameState.lives} LIVES LEFT!`);
+                }
+                
+                this.updateUI();
+            }
+
+            updateUI() {
+                document.getElementById('score').textContent = this.gameState.score;
+                document.getElementById('level').textContent = this.gameState.level;
+                document.getElementById('lives').textContent = this.gameState.lives;
+                
+                // Update hearts display
+                const hearts = document.querySelectorAll('.heart');
+                hearts.forEach((heart, index) => {
+                    heart.style.opacity = index < this.gameState.lives ? '1' : '0.3';
+                });
+                
+                // Add visual feedback for score changes
+                const scoreElement = document.getElementById('score');
+                scoreElement.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    scoreElement.style.transform = 'scale(1)';
+                }, 200);
+            }
+
+            gameOver() {
+                this.gameState.running = false;
+                document.getElementById('finalScore').textContent = this.gameState.score;
+                document.getElementById('gameOver').style.display = 'block';
+            }
+
+            gameLoop() {
+                this.analyzeAudio();
+                this.updatePlayer();
+                this.spawnCollectible();
+                this.spawnObstacle();
+                this.updateGameObjects();
+
+                requestAnimationFrame(() => this.gameLoop());
+            }
+
+            start() {
+                this.gameState.running = true;
+                this.gameState.score = 0;
+                this.gameState.level = 1;
+                this.gameState.lives = 3;
+                this.gameState.collectibles = [];
+                this.gameState.obstacles = [];
+
+                this.player.x = 100;
+                this.player.y = 400;
+                this.player.velocityX = 0;
+                this.player.velocityY = 0;
+                this.player.onGround = true;
+
+                // Clear existing game objects
+                document.querySelectorAll('.collectible, .obstacle, .particle, .sound-wave').forEach(el => el.remove());
+                
+                document.getElementById('startScreen').style.display = 'none';
+                document.getElementById('gameContainer').style.display = 'block';
+                document.getElementById('gameOver').style.display = 'none';
+
+                this.updateUI();
+
+                // Resume audio context if needed
+                if (this.audioContext && this.audioContext.state === 'suspended') {
+                    this.audioContext.resume();
+                }
+            }
+        }
+
+        let game;
+
+        function startGame() {
+            if (!game) {
+                game = new SoundScapeGame();
+            }
+            game.start();
+        }
+
+        function restartGame() {
+            game.start();
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            // Pre-initialize audio context on user interaction
+            document.addEventListener('click', () => {
+                if (!game) {
+                    game = new SoundScapeGame();
+                }
+            }, { once: true });
+        });
+    </script>
+</body>
+</html>
